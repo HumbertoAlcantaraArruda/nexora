@@ -32,8 +32,23 @@ interface LoginData {
   password: string;
 }
 
-export async function register(data: RegisterData): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/register', data);
+// Cria a conta. Com foto, os dados vão como multipart (arquivo + campos).
+export async function register(
+  data: RegisterData,
+  avatar?: File | null,
+): Promise<AuthResponse> {
+  let body: RegisterData | FormData = data;
+
+  if (avatar) {
+    const form = new FormData();
+    Object.entries(data).forEach(([key, value]) => form.append(key, value));
+    form.append('avatar', avatar);
+    body = form;
+  }
+
+  const response = await api.post<AuthResponse>('/register', body, {
+    headers: avatar ? { 'Content-Type': 'multipart/form-data' } : undefined,
+  });
 
   localStorage.setItem('token', response.data.token);
 

@@ -1963,3 +1963,63 @@ textarea {
   font-weight: 800;
   line-height: 1;
 }
+
+/* Foto de perfil no cadastro. */
+.auth-avatar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.auth-avatar-preview {
+  flex-shrink: 0;
+  border-radius: 50%;
+  transition: box-shadow 0.15s ease;
+}
+
+.auth-avatar-preview:hover:not(:disabled),
+.auth-avatar-preview:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.auth-avatar-empty {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 2px dashed var(--color-input-border);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+}
+
+.auth-avatar-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.auth-avatar-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.auth-avatar-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.auth-link {
+  padding: 0;
+  color: var(--color-primary-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.auth-link-danger {
+  color: var(--color-error);
+}

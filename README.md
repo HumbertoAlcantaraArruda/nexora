@@ -29,7 +29,7 @@ O projeto é dividido em duas partes:
 
 ## Funcionalidades
 
-- **Contas de usuário**: cadastro, login e logout.
+- **Contas de usuário**: cadastro (com foto de perfil opcional), login e logout.
 - **Quadros**: criar, renomear, descrever e excluir. Cada quadro é identificado pelas iniciais do nome.
 - **Colunas**: criar, editar o nome, escolher a cor do ícone (5 cores prontas ou qualquer cor da paleta), reordenar arrastando e excluir.
 - **Tarefas**: título, descrição, prioridade (baixa, média, alta), data de vencimento, coluna e **responsável**.
@@ -266,8 +266,9 @@ Depois de um `git pull`, rode no backend `php artisan migrate` para aplicar migr
 ### 1. Criar a conta e entrar
 
 1. Na tela inicial, clique em **"Ainda não tenho uma conta"**.
-2. Informe nome, e-mail e senha (mínimo de 8 caracteres) e confirme a senha.
-3. Clique em **Cadastrar**. Você entra direto na tela **Meus quadros**.
+2. Se quiser, escolha uma **foto de perfil** (opcional; JPG, PNG ou WEBP, até 2 MB) — a prévia aparece na hora. Sem foto, a Nexora mostra as iniciais do seu nome.
+3. Informe nome, e-mail e senha (mínimo de 8 caracteres) e confirme a senha.
+4. Clique em **Cadastrar**. Você entra direto na tela **Meus quadros**.
 
 Nas próximas vezes, use **Entrar** com o e-mail e a senha.
 
@@ -405,7 +406,7 @@ A resposta traz `usuario` e `token`.
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `POST` | `/register` | Cria uma conta (`name`, `email`, `password`, `password_confirmation`). |
+| `POST` | `/register` | Cria uma conta (`name`, `email`, `password`, `password_confirmation` e, opcionalmente, a foto em `avatar` via `multipart/form-data`). |
 | `POST` | `/login` | Entra e devolve o token (`email`, `password`). |
 | `POST` | `/logout` | Invalida o token atual. |
 | `GET` | `/user` | Usuário autenticado. |

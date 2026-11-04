@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { AVATAR_ACCEPT, validateAvatarFile } from "../avatarFile";
 import { confirmDialog } from "../confirmDialog";
 import { getApiErrorMessage, getFieldErrors } from "../services/apiErrors";
 import {
@@ -16,8 +17,6 @@ interface SettingsPageProps {
 }
 
 const NAME_MAX = 255;
-const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FieldErrors = Partial<Record<"name" | "email" | "current_password", string>>;
@@ -57,13 +56,10 @@ function AvatarSection({ user, onUserUpdated }: SettingsPageProps) {
 
     setMessage("");
 
-    if (!AVATAR_TYPES.includes(file.type)) {
-      setError("A foto deve ser JPG, PNG ou WEBP.");
-      return;
-    }
+    const invalid = validateAvatarFile(file);
 
-    if (file.size > AVATAR_MAX_BYTES) {
-      setError("A foto deve ter no máximo 2 MB.");
+    if (invalid) {
+      setError(invalid);
       return;
     }
 
@@ -120,7 +116,7 @@ function AvatarSection({ user, onUserUpdated }: SettingsPageProps) {
           <input
             ref={inputRef}
             type="file"
-            accept={AVATAR_TYPES.join(",")}
+            accept={AVATAR_ACCEPT}
             hidden
             onChange={(event) => void handleFileChange(event)}
           />

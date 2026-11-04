@@ -7,8 +7,7 @@ export type IconName =
   | "arrow-right"
   | "plus"
   | "board"
-  | "eye"
-  | "eye-off"
+  | "sidebar"
   | "sun"
   | "moon"
   | "more-vertical"
@@ -16,7 +15,8 @@ export type IconName =
   | "menu"
   | "x"
   | "calendar"
-  | "grid";
+  | "grid"
+  | "check";
 
 const paths: Record<IconName, string[]> = {
   pencil: ["M12 20h9", "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"],
@@ -29,20 +29,15 @@ const paths: Record<IconName, string[]> = {
   ],
   "arrow-right": ["M5 12h14", "M13 6l6 6-6 6"],
   plus: ["M12 5v14", "M5 12h14"],
+  check: ["M20 6 9 17l-5-5"],
   board: [
     "M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z",
     "M9 3v18",
     "M15 3v12",
   ],
-  eye: [
-    "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z",
-    "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
-  ],
-  "eye-off": [
-    "M3 3l18 18",
-    "M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1",
-    "M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.9 9.9 0 0 0 5.4-1.6",
-    "M9.9 9.9a3 3 0 0 0 4.2 4.2",
+  sidebar: [
+    "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z",
+    "M9 3v18",
   ],
   sun: [
     "M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",

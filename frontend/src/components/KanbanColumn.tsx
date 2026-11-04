@@ -220,8 +220,8 @@ export default function KanbanColumn({
           <button
             type="button"
             className="icon-button"
-            title="Renomear coluna"
-            aria-label={`Renomear a coluna ${column.name}`}
+            title="Editar coluna"
+            aria-label={`Editar a coluna ${column.name}`}
             disabled={busy}
             onClick={() => onEditColumn(column)}
           >

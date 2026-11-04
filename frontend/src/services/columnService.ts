@@ -20,6 +20,7 @@ export async function createColumn(data: {
   board_id: number;
   name: string;
   position?: number;
+  color?: string | null;
 }): Promise<KanbanColumn> {
   const response = await api.post<ColumnResponse>('/columns', data);
   return response.data.coluna;
@@ -27,7 +28,7 @@ export async function createColumn(data: {
 
 export async function updateColumn(
   id: number,
-  data: Partial<Pick<KanbanColumn, 'name' | 'position'>>,
+  data: Partial<Pick<KanbanColumn, 'name' | 'position' | 'color'>>,
 ): Promise<KanbanColumn> {
   const response = await api.patch<ColumnResponse>(`/columns/${id}`, data);
   return response.data.coluna;

@@ -47,6 +47,7 @@
   );
 
   --sidebar-width: 300px;
+  --sidebar-rail-width: 80px;
   --topbar-height: 96px;
   --radius-pill: 24px;
 

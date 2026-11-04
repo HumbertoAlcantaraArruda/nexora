@@ -37,21 +37,12 @@ import {
 } from "../services/apiErrors";
 
 import ActionMenu from "./ActionMenu";
-import ColumnFormModal from "./ColumnFormModal";
+import { columnColor, defaultColumnColor } from "../columnColors";
+import ColumnFormModal, { type ColumnFormData } from "./ColumnFormModal";
 import Icon from "./Icon";
 import KanbanColumn from "./KanbanColumn";
 import TaskFormModal, { type TaskFormData } from "./TaskFormModal";
 import TopBar from "./TopBar";
-
-// Cores das bolinhas dos cabeçalhos, alternadas por posição da coluna.
-const COLUMN_COLORS = [
-  "#49c4e5",
-  "#8471f2",
-  "#67e2ae",
-  "#e5a449",
-  "#2a3fdb",
-  "#c36e6e",
-];
 
 // Busca o quadro com colunas e tarefas, ordenadas por position.
 async function fetchBoard(
@@ -76,8 +67,6 @@ interface KanbanBoardProps {
   boardId: number;
   // Dados do quadro vindos da lista do App (nome/descrição atualizados ao editar).
   board?: Board;
-  sidebarHidden: boolean;
-  onShowSidebar: () => void;
   onGoHome: () => void;
   onEditBoard: (board: Board) => void;
   onDeleteBoard: (board: Board) => void;
@@ -96,8 +85,6 @@ type ColumnModalState =
 export default function KanbanBoard({
   boardId,
   board: boardFromList,
-  sidebarHidden,
-  onShowSidebar,
   onGoHome,
   onEditBoard,
   onDeleteBoard,
@@ -199,7 +186,10 @@ export default function KanbanBoard({
     setColumnModal(state);
   }
 
-  async function handleSaveColumn(name: string): Promise<boolean> {
+  async function handleSaveColumn({
+    name,
+    color,
+  }: ColumnFormData): Promise<boolean> {
     const modal = columnModal;
 
     if (!modal) return false;
@@ -211,17 +201,18 @@ export default function KanbanBoard({
               board_id: boardId,
               name,
               position: columns.length,
+              color,
             });
 
             setColumns((current) => [...current, { ...column, tasks: [] }]);
           })
-        : await runMutation("Não foi possível renomear a coluna.", async () => {
-            const updated = await updateColumn(modal.column.id, { name });
+        : await runMutation("Não foi possível salvar a coluna.", async () => {
+            const updated = await updateColumn(modal.column.id, { name, color });
 
             setColumns((current) =>
               current.map((column) =>
                 column.id === modal.column.id
-                  ? { ...column, name: updated.name }
+                  ? { ...column, name: updated.name, color: updated.color }
                   : column,
               ),
             );
@@ -674,8 +665,6 @@ export default function KanbanBoard({
       <>
         <TopBar
           title="Quadro não encontrado"
-          sidebarHidden={sidebarHidden}
-          onShowSidebar={onShowSidebar}
         />
         <div className="page-content">
           <div className="empty-state">
@@ -702,8 +691,6 @@ export default function KanbanBoard({
       <TopBar
         title={board.name}
         subtitle={board.description}
-        sidebarHidden={sidebarHidden}
-        onShowSidebar={onShowSidebar}
         actions={
           <>
             {saving && (
@@ -760,7 +747,7 @@ export default function KanbanBoard({
             {columnDropIndex === index && columnDropIndicator}
             <KanbanColumn
               column={column}
-              color={COLUMN_COLORS[index % COLUMN_COLORS.length]}
+              color={columnColor(column, index)}
               busy={saving}
               onOpenTask={(task) => openTaskModal({ mode: "edit", task })}
               onEditColumn={(item) =>
@@ -817,6 +804,14 @@ export default function KanbanBoard({
         <ColumnFormModal
           initialName={
             columnModal.mode === "edit" ? columnModal.column.name : undefined
+          }
+          initialColor={
+            columnModal.mode === "edit"
+              ? columnColor(
+                  columnModal.column,
+                  columns.findIndex((item) => item.id === columnModal.column.id),
+                )
+              : defaultColumnColor(columns.length)
           }
           saving={saving}
           error={error}

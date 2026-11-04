@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AuthForm from "./components/AuthForm";
 import BoardFormModal, { type BoardFormData } from "./components/BoardFormModal";
 import BoardList from "./components/BoardList";
-import Icon from "./components/Icon";
 import KanbanBoard from "./components/KanbanBoard";
+import SettingsPage from "./components/SettingsPage";
 import Sidebar from "./components/Sidebar";
 import { confirmDialog } from "./confirmDialog";
 import { SESSION_EXPIRED_EVENT } from "./services/api";
@@ -20,23 +20,14 @@ import {
   updateBoard,
   type Board,
 } from "./services/boardService";
-import { getBoardIdFromHash, goToBoard, goToBoardList } from "./navigation";
+import {
+  getBoardIdFromHash,
+  goToBoard,
+  goToBoardList,
+  goToSettings,
+  isSettingsHash,
+} from "./navigation";
 import "./App.css";
-
-const SIDEBAR_STORAGE_KEY = "sidebar-hidden";
-const MOBILE_QUERY = "(max-width: 768px)";
-
-// No celular a barra lateral começa fechada (vira uma gaveta sobre o conteúdo);
-// no desktop vale a última escolha do usuário.
-function getInitialSidebarHidden() {
-  if (window.matchMedia(MOBILE_QUERY).matches) return true;
-
-  try {
-    return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
 
 type BoardModalState = { mode: "create" } | { mode: "edit"; board: Board } | null;
 
@@ -48,7 +39,11 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [boardId, setBoardId] = useState<number | null>(getBoardIdFromHash);
-  const [sidebarHidden, setSidebarHidden] = useState(getInitialSidebarHidden);
+  const [settingsOpen, setSettingsOpen] = useState(isSettingsHash);
+  // A barra lateral fica sempre visível como um trilho de ícones; expandida,
+  // empurra o conteúdo e recolhe ao clicar fora dela.
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   // Quadros do usuário: compartilhados pela barra lateral, tela inicial e
   // cabeçalho do quadro aberto.
@@ -96,10 +91,9 @@ export default function App() {
   useEffect(() => {
     function handleHashChange() {
       setBoardId(getBoardIdFromHash());
+      setSettingsOpen(isSettingsHash());
       window.scrollTo(0, 0);
-
-      // No celular a gaveta fecha ao navegar.
-      if (window.matchMedia(MOBILE_QUERY).matches) setSidebarHidden(true);
+      setSidebarExpanded(false);
     }
 
     window.addEventListener("hashchange", handleHashChange);
@@ -148,16 +142,36 @@ export default function App() {
     }
   }, [user, boardId, boards, boardsLoading, loadBoards]);
 
-  function setSidebar(hidden: boolean) {
-    setSidebarHidden(hidden);
+  // Barra expandida: qualquer clique fora dela (ou Esc) a recolhe. O clique
+  // segue normalmente para o que estiver embaixo (cartão, botão etc.).
+  useEffect(() => {
+    if (!sidebarExpanded) return;
 
-    if (!window.matchMedia(MOBILE_QUERY).matches) {
-      try {
-        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(hidden));
-      } catch {
-        // Sem armazenamento: a escolha vale só para esta sessão.
+    function handlePointerDown(event: PointerEvent) {
+      if (!sidebarRef.current?.contains(event.target as Node)) {
+        setSidebarExpanded(false);
       }
     }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSidebarExpanded(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [sidebarExpanded]);
+
+  // Ações da barra lateral recolhem a barra depois de executar.
+  function fromSidebar(action: () => void) {
+    return () => {
+      setSidebarExpanded(false);
+      action();
+    };
   }
 
   // Após o login o usuário sempre começa na tela "Meus quadros".
@@ -297,34 +311,37 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell${sidebarHidden ? " sidebar-hidden" : ""}`}>
+    <div className={`app-shell${sidebarExpanded ? " sidebar-open" : ""}`}>
       <Sidebar
+        ref={sidebarRef}
         boards={boards}
         activeBoardId={boardId}
+        settingsActive={settingsOpen}
         user={user}
-        onGoHome={goToBoardList}
-        onOpenBoard={goToBoard}
-        onCreateBoard={() => openBoardModal({ mode: "create" })}
-        onHide={() => setSidebar(true)}
-        onLogout={() => void handleLogout()}
+        expanded={sidebarExpanded}
+        onToggle={() => setSidebarExpanded((current) => !current)}
+        onGoHome={fromSidebar(goToBoardList)}
+        onOpenBoard={(id) => {
+          setSidebarExpanded(false);
+          goToBoard(id);
+        }}
+        onCreateBoard={fromSidebar(() => openBoardModal({ mode: "create" }))}
+        onOpenSettings={fromSidebar(goToSettings)}
+        onLogout={fromSidebar(() => void handleLogout())}
       />
 
-      {/* Fundo escurecido da gaveta no celular. */}
-      <div
-        className="sidebar-backdrop"
-        onClick={() => setSidebar(true)}
-        aria-hidden="true"
-      />
+      {/* Fundo escurecido da barra expandida (só no celular). */}
+      <div className="sidebar-backdrop" aria-hidden="true" />
 
       <main className="app-main">
-        {boardId === null ? (
+        {settingsOpen ? (
+          <SettingsPage user={user} onUserUpdated={setUser} />
+        ) : boardId === null ? (
           <BoardList
             boards={boards}
             loading={boardsLoading}
             error={boardsError}
             busy={boardBusy}
-            sidebarHidden={sidebarHidden}
-            onShowSidebar={() => setSidebar(false)}
             onOpenBoard={goToBoard}
             onCreateBoard={() => openBoardModal({ mode: "create" })}
             onEditBoard={(board) => openBoardModal({ mode: "edit", board })}
@@ -335,26 +352,12 @@ export default function App() {
             key={boardId}
             boardId={boardId}
             board={boards.find((board) => board.id === boardId)}
-            sidebarHidden={sidebarHidden}
-            onShowSidebar={() => setSidebar(false)}
             onGoHome={goToBoardList}
             onEditBoard={(board) => openBoardModal({ mode: "edit", board })}
             onDeleteBoard={(board) => void handleDeleteBoard(board)}
           />
         )}
       </main>
-
-      {sidebarHidden && (
-        <button
-          type="button"
-          className="sidebar-show"
-          onClick={() => setSidebar(false)}
-          title="Mostrar barra lateral"
-          aria-label="Mostrar barra lateral"
-        >
-          <Icon name="eye" size={18} />
-        </button>
-      )}
 
       {boardModal && (
         <BoardFormModal

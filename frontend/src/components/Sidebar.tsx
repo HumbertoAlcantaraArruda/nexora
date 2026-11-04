@@ -1,5 +1,8 @@
+import { forwardRef, type MouseEvent } from "react";
 import type { Board } from "../services/boardService";
 import type { User } from "../services/authService";
+import { initials } from "../initials";
+import Avatar from "./Avatar";
 import Icon from "./Icon";
 import Logo from "./Logo";
 import ThemeToggle from "./ThemeToggle";
@@ -7,57 +10,91 @@ import ThemeToggle from "./ThemeToggle";
 interface SidebarProps {
   boards: Board[];
   activeBoardId: number | null;
+  settingsActive: boolean;
   user: User;
+  expanded: boolean;
+  onToggle: () => void;
   onGoHome: () => void;
   onOpenBoard: (boardId: number) => void;
   onCreateBoard: () => void;
-  onHide: () => void;
+  onOpenSettings: () => void;
   onLogout: () => void;
 }
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
+// Barra lateral sempre visível: recolhida é um trilho só com ícones;
+// expandida mostra os nomes e empurra o conteúdo.
+const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
+  {
+    boards,
+    activeBoardId,
+    settingsActive,
+    user,
+    expanded,
+    onToggle,
+    onGoHome,
+    onOpenBoard,
+    onCreateBoard,
+    onOpenSettings,
+    onLogout,
+  },
+  ref,
+) {
+  const homeActive = activeBoardId === null && !settingsActive;
+  // Recolhida, um clique na barra fora dos botões também a expande.
+  function handleClick(event: MouseEvent<HTMLElement>) {
+    if (!expanded && !(event.target as Element).closest("button, a")) {
+      onToggle();
+    }
+  }
 
-export default function Sidebar({
-  boards,
-  activeBoardId,
-  user,
-  onGoHome,
-  onOpenBoard,
-  onCreateBoard,
-  onHide,
-  onLogout,
-}: SidebarProps) {
   return (
-    <aside className="sidebar" aria-label="Barra lateral">
-      <button
-        type="button"
-        className="sidebar-logo"
-        onClick={onGoHome}
-        title="Ir para Meus quadros"
-      >
-        <Logo />
-      </button>
+    <aside
+      ref={ref}
+      id="sidebar"
+      className={`sidebar${expanded ? " sidebar-expanded" : ""}`}
+      aria-label="Barra lateral"
+      onClick={handleClick}
+    >
+      <div className="sidebar-header">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-controls="sidebar"
+          title={expanded ? "Recolher menu" : "Expandir menu"}
+          aria-label={expanded ? "Recolher menu" : "Expandir menu"}
+        >
+          <Icon name="sidebar" size={20} />
+        </button>
+
+        <button
+          type="button"
+          className="sidebar-logo"
+          onClick={onGoHome}
+          title="Ir para Meus quadros"
+          tabIndex={expanded ? 0 : -1}
+        >
+          <Logo />
+        </button>
+      </div>
 
       <nav className="sidebar-nav" aria-label="Quadros">
         <button
           type="button"
-          className={`sidebar-item${activeBoardId === null ? " sidebar-item-active" : ""}`}
+          className={`sidebar-item${homeActive ? " sidebar-item-active" : ""}`}
           onClick={onGoHome}
-          aria-current={activeBoardId === null ? "page" : undefined}
+          aria-current={homeActive ? "page" : undefined}
+          title="Meus quadros"
         >
-          <Icon name="grid" size={16} />
-          <span>Meus quadros</span>
+          <span className="sidebar-item-icon">
+            <Icon name="grid" size={18} />
+          </span>
+          <span className="sidebar-item-label">Meus quadros</span>
         </button>
 
         <p className="sidebar-section-title">
-          Todos os quadros ({boards.length})
+          <span>Todos os quadros ({boards.length})</span>
         </p>
 
         <ul className="sidebar-boards">
@@ -73,8 +110,12 @@ export default function Sidebar({
                   aria-current={active ? "page" : undefined}
                   title={board.name}
                 >
-                  <Icon name="board" size={16} />
-                  <span>{board.name}</span>
+                  <span className="sidebar-item-icon">
+                    <span className="board-badge" aria-hidden="true">
+                      {initials(board.name) || "?"}
+                    </span>
+                  </span>
+                  <span className="sidebar-item-label">{board.name}</span>
                 </button>
               </li>
             );
@@ -85,38 +126,48 @@ export default function Sidebar({
           type="button"
           className="sidebar-item sidebar-create"
           onClick={onCreateBoard}
+          title="Criar novo quadro"
         >
-          <Icon name="plus" size={16} />
-          <span>Criar novo quadro</span>
+          <span className="sidebar-item-icon">
+            <Icon name="plus" size={18} />
+          </span>
+          <span className="sidebar-item-label">Criar novo quadro</span>
         </button>
       </nav>
 
       <div className="sidebar-footer">
         <ThemeToggle />
 
-        <div className="sidebar-user">
-          <span className="avatar" aria-hidden="true">
-            {initials(user.name)}
+        <button
+          type="button"
+          className={`sidebar-user${settingsActive ? " sidebar-user-active" : ""}`}
+          onClick={onOpenSettings}
+          aria-current={settingsActive ? "page" : undefined}
+          title="Configurações da conta"
+        >
+          <span className="sidebar-item-icon">
+            <Avatar user={user} />
           </span>
-          <span className="sidebar-user-name" title={user.email}>
-            {user.name}
+          <span className="sidebar-user-text">
+            <span className="sidebar-user-name">{user.name}</span>
+            <span className="sidebar-user-email">{user.email}</span>
           </span>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onLogout}
-            title="Sair"
-            aria-label="Sair"
-          >
-            <Icon name="logout" size={18} />
-          </button>
-        </div>
+        </button>
 
-        <button type="button" className="sidebar-item" onClick={onHide}>
-          <Icon name="eye-off" size={16} />
-          <span>Ocultar barra lateral</span>
+        <button
+          type="button"
+          className="sidebar-item"
+          onClick={onLogout}
+          title="Sair"
+        >
+          <span className="sidebar-item-icon">
+            <Icon name="logout" size={18} />
+          </span>
+          <span className="sidebar-item-label">Sair</span>
         </button>
       </div>
     </aside>
   );
-}
+});
+
+export default Sidebar;

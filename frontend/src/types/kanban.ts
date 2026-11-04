@@ -14,6 +14,8 @@ export interface KanbanColumn {
   board_id: number;
   name: string;
   position: number;
+  // Cor do ícone ao lado do nome (#rrggbb); nula usa a padrão pela posição.
+  color: string | null;
   tasks: Task[];
 }
 

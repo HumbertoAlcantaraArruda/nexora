@@ -1,4 +1,5 @@
 import type { Board } from "../services/boardService";
+import { initials } from "../initials";
 import Icon from "./Icon";
 import TopBar from "./TopBar";
 
@@ -7,8 +8,6 @@ interface BoardListProps {
   loading: boolean;
   error: string;
   busy: boolean;
-  sidebarHidden: boolean;
-  onShowSidebar: () => void;
   onOpenBoard: (boardId: number) => void;
   onCreateBoard: () => void;
   onEditBoard: (board: Board) => void;
@@ -25,8 +24,6 @@ export default function BoardList({
   loading,
   error,
   busy,
-  sidebarHidden,
-  onShowSidebar,
   onOpenBoard,
   onCreateBoard,
   onEditBoard,
@@ -37,8 +34,6 @@ export default function BoardList({
       <TopBar
         title="Meus quadros"
         subtitle="Escolha um quadro para organizar colunas e tarefas."
-        sidebarHidden={sidebarHidden}
-        onShowSidebar={onShowSidebar}
         actions={
           <button
             type="button"
@@ -80,7 +75,7 @@ export default function BoardList({
             {boards.map((board) => (
               <article className="board-card" key={board.id}>
                 <div className="board-card-icon" aria-hidden="true">
-                  <Icon name="board" size={20} />
+                  {initials(board.name) || "?"}
                 </div>
 
                 <h2>{board.name}</h2>

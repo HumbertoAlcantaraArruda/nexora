@@ -22,7 +22,7 @@ export default function Avatar({ user, size = 32 }: AvatarProps) {
       {showPhoto ? (
         <img src={url} alt="" onError={() => setFailedUrl(url)} />
       ) : (
-        initials(user.name)
+        initials(user.name) || "?"
       )}
     </span>
   );

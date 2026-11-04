@@ -1,10 +1,16 @@
-// Até duas iniciais do nome (ex.: "Lançamento da plataforma" -> "LD"), usadas
-// nos selos de quadros e no avatar do usuário.
+// Primeira letra ou número de uma palavra, ignorando símbolos
+// (ex.: "[tmp]" -> "T", "#2" -> "2").
+const FIRST_LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
+
+// Até duas iniciais do nome (ex.: "Lançamento da plataforma" -> "LD",
+// "[tmp] Quadro de teste" -> "TQ"), usadas nos selos de quadros e no avatar
+// do usuário. Palavras só com símbolos são puladas.
 export function initials(name: string): string {
   return name
     .split(/\s+/)
-    .filter(Boolean)
+    .map((word) => FIRST_LETTER_OR_DIGIT.exec(word)?.[0])
+    .filter((letter): letter is string => Boolean(letter))
     .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
+    .map((letter) => letter.toUpperCase())
     .join("");
 }

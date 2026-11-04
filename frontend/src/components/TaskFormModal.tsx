@@ -1,17 +1,22 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import type { KanbanColumn as Column, Task } from "../types/kanban";
 import { confirmDialog } from "../confirmDialog";
+import type { PlatformUser } from "../services/userService";
 import Modal from "./Modal";
+import UserSelect from "./UserSelect";
 
 export type TaskFormData = Pick<
   Task,
-  "title" | "description" | "priority" | "due_date"
+  "title" | "description" | "priority" | "due_date" | "assignee_id"
 >;
 
 interface TaskFormModalProps {
   // Sem tarefa: criação; com tarefa: edição (campos preenchidos).
   task?: Task;
   columns: Column[];
+  // Usuários da plataforma para escolher o responsável.
+  users: PlatformUser[];
+  usersLoading: boolean;
   // Coluna pré-selecionada na criação.
   defaultColumnId?: number;
   saving: boolean;
@@ -42,6 +47,8 @@ function validate(title: string, description: string): string {
 export default function TaskFormModal({
   task,
   columns,
+  users,
+  usersLoading,
   defaultColumnId,
   saving,
   error,
@@ -59,7 +66,11 @@ export default function TaskFormModal({
   const [columnId, setColumnId] = useState(
     task?.board_column_id ?? defaultColumnId ?? columns[0]?.id ?? 0,
   );
+  const [assigneeId, setAssigneeId] = useState<number | null>(
+    task?.assignee_id ?? null,
+  );
   const [validationError, setValidationError] = useState("");
+  const assigneeLabelId = useId();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,6 +89,7 @@ export default function TaskFormModal({
         description: trimmedDescription || null,
         priority,
         due_date: dueDate || null,
+        assignee_id: assigneeId,
       },
       columnId,
     );
@@ -163,6 +175,19 @@ export default function TaskFormModal({
                 onChange={(event) => setDueDate(event.target.value)}
               />
             </label>
+          </div>
+
+          <div className="form-field">
+            <span id={assigneeLabelId}>Responsável</span>
+            <UserSelect
+              users={users}
+              value={assigneeId}
+              selectedUser={task?.assignee}
+              onChange={setAssigneeId}
+              loading={usersLoading}
+              disabled={readOnly}
+              labelId={assigneeLabelId}
+            />
           </div>
 
           <label className="form-field">

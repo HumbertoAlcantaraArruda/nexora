@@ -1,4 +1,5 @@
 import type { Task } from "../types/kanban";
+import Avatar from "./Avatar";
 import Icon from "./Icon";
 
 interface TaskCardProps {
@@ -107,6 +108,17 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
           </span>
         )}
       </div>
+
+      {task.assignee && (
+        <div
+          className="task-card-assignee"
+          title={`Responsável: ${task.assignee.name} (${task.assignee.email})`}
+        >
+          <Avatar user={task.assignee} size={22} />
+          <span className="visually-hidden">Responsável: </span>
+          <span className="task-card-assignee-name">{task.assignee.name}</span>
+        </div>
+      )}
     </article>
   );
 }

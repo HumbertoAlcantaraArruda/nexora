@@ -1,7 +1,12 @@
 
+import type { PlatformUser } from '../services/userService';
+
 export interface Task {
   id: number;
   board_column_id: number;
+  // Responsável (opcional): qualquer usuário da plataforma.
+  assignee_id: number | null;
+  assignee?: PlatformUser | null;
   title: string;
   description: string | null;
   priority: 'low' | 'medium' | 'high';

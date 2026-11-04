@@ -24,6 +24,7 @@ export async function createTask(data: {
   priority?: Task['priority'];
   due_date?: string | null;
   position?: number;
+  assignee_id?: number | null;
 }): Promise<Task> {
   const response = await api.post<TaskResponse>('/tasks', data);
   return response.data.tarefa;
@@ -40,6 +41,7 @@ export async function updateTask(
       | 'priority'
       | 'due_date'
       | 'position'
+      | 'assignee_id'
     >
   >,
 ): Promise<Task> {

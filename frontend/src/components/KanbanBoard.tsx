@@ -43,6 +43,7 @@ import Icon from "./Icon";
 import KanbanColumn from "./KanbanColumn";
 import OwnerTag from "./OwnerTag";
 import TaskFormModal, { type TaskFormData } from "./TaskFormModal";
+import { getUsers, type PlatformUser } from "../services/userService";
 import TopBar from "./TopBar";
 
 // Busca o quadro com colunas e tarefas, ordenadas por position.
@@ -103,6 +104,9 @@ export default function KanbanBoard({
   const [columnDrag, setColumnDrag] = useState<ColumnDragState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Usuários da plataforma para o campo "Responsável" das tarefas.
+  const [users, setUsers] = useState<PlatformUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
 
   // Prefere os dados da lista do App, que refletem edições feitas no modal.
   const board = boardFromList ?? fetchedBoard;
@@ -117,6 +121,25 @@ export default function KanbanBoard({
   // O ref garante o bloqueio imediato; o state atualiza a interface.
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+
+  // Lista de usuários para o "Responsável". Se falhar, o campo continua
+  // mostrando o responsável atual e permite deixar a tarefa sem responsável.
+  useEffect(() => {
+    let active = true;
+
+    getUsers()
+      .then((list) => {
+        if (active) setUsers(list);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setUsersLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // O componente é remontado (key) ao trocar de quadro, então carrega uma vez.
   useEffect(() => {
@@ -299,6 +322,8 @@ export default function KanbanBoard({
                 description: updated.description,
                 priority: updated.priority,
                 due_date: updated.due_date,
+                assignee_id: updated.assignee_id,
+                assignee: updated.assignee ?? null,
               }
             : item;
 
@@ -864,6 +889,8 @@ export default function KanbanBoard({
             taskModal.mode === "create" ? taskModal.columnId : undefined
           }
           columns={columns}
+          users={users}
+          usersLoading={usersLoading}
           saving={saving}
           error={error}
           onSave={handleSaveTask}

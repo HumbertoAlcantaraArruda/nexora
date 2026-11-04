@@ -1727,3 +1727,164 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================================
+   Responsável da tarefa
+   ========================================================================= */
+
+.task-card-assignee {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.task-card-assignee .avatar {
+  font-size: 9px;
+}
+
+.task-card-assignee-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Select de usuários (foto, nome e e-mail). */
+.user-select {
+  position: relative;
+}
+
+.user-select-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.user-select-trigger:hover:not(:disabled),
+.user-select-trigger[aria-expanded="true"] {
+  border-color: var(--color-primary);
+}
+
+.user-select-trigger:disabled {
+  background: var(--color-hover);
+  cursor: default;
+}
+
+.user-select-trigger > .icon {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-text-muted);
+}
+
+.user-select-placeholder {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.user-select-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.user-select-name,
+.user-select-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-select-name {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.user-select-email {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.user-select-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-elevated);
+}
+
+.user-select-search {
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+}
+
+.user-select-search:focus {
+  outline: none;
+}
+
+.user-select-list {
+  max-height: 240px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.user-select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.user-select-option-active {
+  background: var(--color-primary-faint);
+}
+
+.user-select-option > .icon {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-primary-text);
+}
+
+.user-select-none {
+  flex: 1;
+  padding: 6px 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.user-select-status {
+  padding: 10px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}

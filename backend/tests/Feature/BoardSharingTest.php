@@ -49,64 +49,14 @@ class BoardSharingTest extends TestCase
 
     // ---- Gerenciar o compartilhamento ----------------------------------------
 
-    public function test_owner_shares_board_by_email(): void
-    {
-        $board = Board::create(['user_id' => $this->owner->id, 'name' => 'Outro']);
-
-        Sanctum::actingAs($this->owner);
-
-        $this->postJson("/api/boards/{$board->id}/members", [
-            'email' => 'bruno@example.com',
-            'role' => 'viewer',
-        ])
-            ->assertCreated()
-            ->assertJsonPath('membros.0.name', 'Bruno Editor')
-            ->assertJsonPath('membros.0.role', 'viewer')
-            ->assertJsonMissingPath('membros.0.avatar_path');
-
-        // Compartilhar de novo com a mesma pessoa só troca a permissão.
-        $this->postJson("/api/boards/{$board->id}/members", [
-            'email' => 'bruno@example.com',
-            'role' => 'editor',
-        ])
-            ->assertCreated()
-            ->assertJsonCount(1, 'membros')
-            ->assertJsonPath('membros.0.role', 'editor');
-    }
-
-    public function test_rejects_unknown_email_owner_and_invalid_role(): void
-    {
-        Sanctum::actingAs($this->owner);
-
-        $this->postJson("/api/boards/{$this->board->id}/members", [
-            'email' => 'ninguem@example.com',
-            'role' => 'viewer',
-        ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('email');
-
-        $this->postJson("/api/boards/{$this->board->id}/members", [
-            'email' => 'ana@example.com',
-            'role' => 'viewer',
-        ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('email');
-
-        $this->postJson("/api/boards/{$this->board->id}/members", [
-            'email' => 'estranho@example.com',
-            'role' => 'owner',
-        ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('role');
-    }
-
     public function test_owner_lists_changes_and_removes_members(): void
     {
         Sanctum::actingAs($this->owner);
 
         $this->getJson("/api/boards/{$this->board->id}/members")
             ->assertOk()
-            ->assertJsonCount(2, 'membros');
+            ->assertJsonCount(2, 'membros')
+            ->assertJsonCount(0, 'convites');
 
         $this->patchJson("/api/boards/{$this->board->id}/members/{$this->viewer->id}", ['role' => 'editor'])
             ->assertOk();
@@ -126,8 +76,8 @@ class BoardSharingTest extends TestCase
 
             $this->getJson("/api/boards/{$this->board->id}/members")->assertForbidden();
 
-            $this->postJson("/api/boards/{$this->board->id}/members", [
-                'email' => 'estranho@example.com',
+            $this->postJson("/api/boards/{$this->board->id}/invitations", [
+                'user_id' => $this->stranger->id,
                 'role' => 'editor',
             ])->assertForbidden();
 

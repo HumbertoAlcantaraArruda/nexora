@@ -37,18 +37,38 @@ class TaskAssigneeTest extends TestCase
         $this->column = $this->board->columns()->create(['name' => 'A fazer', 'position' => 0]);
     }
 
-    public function test_lists_platform_users_with_name_email_and_photo_only(): void
+    public function test_searches_users_by_name_with_name_email_and_photo_only(): void
     {
+        User::factory()->create(['name' => 'Carla Brunetti']);
+
         Sanctum::actingAs($this->owner);
 
-        $users = $this->getJson('/api/users')
+        $users = $this->getJson('/api/users?search=brun')
             ->assertOk()
             ->assertJsonCount(2, 'usuarios')
             ->json('usuarios');
 
-        $this->assertSame(['Ana Dona', 'Bruno Responsável'], array_column($users, 'name'));
-        $this->assertSame(['id', 'name', 'email', 'avatar_url'], array_keys($users[1]));
-        $this->assertSame('bruno@example.com', $users[1]['email']);
+        $this->assertSame(['Bruno Responsável', 'Carla Brunetti'], array_column($users, 'name'));
+        $this->assertSame(['id', 'name', 'email', 'avatar_url'], array_keys($users[0]));
+        $this->assertSame('bruno@example.com', $users[0]['email']);
+    }
+
+    public function test_users_are_not_listed_without_a_search_term(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->getJson('/api/users')->assertOk()->assertJsonCount(0, 'usuarios');
+        $this->getJson('/api/users?search=b')->assertOk()->assertJsonCount(0, 'usuarios');
+        $this->getJson('/api/users?search=%25%25')->assertOk()->assertJsonCount(0, 'usuarios');
+    }
+
+    public function test_search_returns_at_most_ten_users(): void
+    {
+        User::factory()->count(12)->create(['name' => 'Pessoa Repetida']);
+
+        Sanctum::actingAs($this->owner);
+
+        $this->getJson('/api/users?search=repetida')->assertOk()->assertJsonCount(10, 'usuarios');
     }
 
     public function test_users_list_requires_authentication(): void

@@ -17,5 +17,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Kanban
     Route::apiResource('boards', BoardController::class);
     Route::apiResource('columns', BoardColumnController::class);
+
+    // Declarada antes do apiResource para não ser capturada por tasks/{task}.
+    Route::put('/tasks/reorder', [TaskController::class, 'reorder']);
     Route::apiResource('tasks', TaskController::class);
 });

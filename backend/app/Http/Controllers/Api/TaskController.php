@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\BoardColumn;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TaskController extends Controller
 {
@@ -130,14 +133,123 @@ class TaskController extends Controller
     }
 
     /**
-     * Exclui uma tarefa.
+     * Atualiza em lote a ordem das tarefas de uma ou mais colunas.
+     *
+     * Cada coluna enviada deve listar, na nova ordem, todas as tarefas que
+     * ficarão nela. As posições são regravadas sequencialmente a partir de
+     * zero dentro de uma transação: ou tudo é salvo, ou nada é alterado.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'columns' => ['required', 'array', 'min:1'],
+            'columns.*.id' => ['required', 'integer', 'distinct'],
+            'columns.*.task_ids' => ['present', 'array'],
+            'columns.*.task_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $columnIds = array_map(
+            fn (array $column): int => (int) $column['id'],
+            $validated['columns'],
+        );
+
+        $submittedTaskIds = array_merge(
+            ...array_map(
+                fn (array $column): array => array_map('intval', $column['task_ids']),
+                $validated['columns'],
+            ),
+        );
+
+        $tasks = DB::transaction(function () use (
+            $request,
+            $validated,
+            $columnIds,
+            $submittedTaskIds,
+        ) {
+            $userColumnsCount = BoardColumn::query()
+                ->whereHas('board', function ($query) use ($request) {
+                    $query->where('user_id', $request->user()->id);
+                })
+                ->whereIn('id', $columnIds)
+                ->count();
+
+            if ($userColumnsCount !== count($columnIds)) {
+                throw new ModelNotFoundException();
+            }
+
+            $userTasks = Task::query()
+                ->whereHas('column.board', function ($query) use ($request) {
+                    $query->where('user_id', $request->user()->id);
+                })
+                ->whereIn('id', $submittedTaskIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($userTasks->count() !== count($submittedTaskIds)) {
+                throw new ModelNotFoundException();
+            }
+
+            // Toda tarefa que hoje está nas colunas enviadas precisa constar na
+            // nova ordem; caso contrário ela ficaria com posição inconsistente.
+            $currentTaskIds = Task::query()
+                ->whereIn('board_column_id', $columnIds)
+                ->lockForUpdate()
+                ->pluck('id')
+                ->all();
+
+            $missing = array_diff($currentTaskIds, $submittedTaskIds);
+
+            if ($missing !== []) {
+                throw ValidationException::withMessages([
+                    'columns' => 'Todas as tarefas das colunas enviadas devem ser informadas.',
+                ]);
+            }
+
+            foreach ($validated['columns'] as $column) {
+                foreach (array_values($column['task_ids']) as $position => $taskId) {
+                    $task = $userTasks->get((int) $taskId);
+
+                    $task->fill([
+                        'board_column_id' => (int) $column['id'],
+                        'position' => $position,
+                    ]);
+
+                    if ($task->isDirty()) {
+                        $task->save();
+                    }
+                }
+            }
+
+            return Task::query()
+                ->whereIn('board_column_id', $columnIds)
+                ->orderBy('board_column_id')
+                ->orderBy('position')
+                ->get();
+        });
+
+        return response()->json([
+            'mensagem' => 'ok',
+            'tarefas' => $tasks,
+        ]);
+    }
+
+    /**
+     * Exclui uma tarefa e reorganiza as posições restantes da coluna.
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
         $task = $this->findUserTask($request, $id)
             ->firstOrFail();
 
-        $task->delete();
+        DB::transaction(function () use ($task) {
+            $task->delete();
+
+            Task::query()
+                ->where('board_column_id', $task->board_column_id)
+                ->where('position', '>', $task->position)
+                ->decrement('position');
+        });
 
         return response()->json([
             'mensagem' => 'ok',

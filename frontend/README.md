@@ -1,75 +1,46 @@
-# React + TypeScript + Vite
+# Nexora — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicação web da [Nexora](../README.md), feita em **React 19 + TypeScript** e gerada com **Vite**. Conversa com a API Laravel da pasta [`backend/`](../backend/README.md).
 
-Currently, two official plugins are available:
+> A documentação completa do projeto — funcionalidades, guia de uso, permissões e API — está no [README principal](../README.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## O que fica aqui
 
-## React Compiler
+| Pasta / arquivo | Conteúdo |
+|---|---|
+| `src/components/` | Telas e componentes: quadro (`KanbanBoard`, `KanbanColumn`, `TaskCard`), barra lateral, modais, configurações, convites e o campo de busca de usuários (`UserPicker`). |
+| `src/services/` | Chamadas à API com Axios (autenticação, quadros, colunas, tarefas, convites e usuários). |
+| `src/types/` | Tipos TypeScript compartilhados. |
+| `src/navigation.ts` | Navegação pelo hash da URL (`#/`, `#/quadros/ID`, `#/configuracoes`, `#/convites/ID`). |
+| `src/App.tsx` | Estrutura principal: sessão, quadros, convites e rotas. |
+| `src/App.css` / `src/index.css` | Estilos e as variáveis de cor dos temas claro e escuro. |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Detalhes técnicos:
 
-## Expanding the ESLint configuration
+- **Arrastar e soltar** com a API nativa do HTML5 (sem biblioteca), salvando a nova ordem no servidor e desfazendo na tela se a requisição falhar.
+- **Ícones SVG** próprios em `src/components/Icon.tsx` e diálogos de confirmação com **SweetAlert2**.
+- O token de login fica no `localStorage` e vai no cabeçalho `Authorization: Bearer` de cada requisição.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Rodando
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Requer **Node.js 20.19+ ou 22.12+**. Com a API rodando, crie o arquivo `.env` nesta pasta:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```dotenv
+VITE_API_URL=http://127.0.0.1:8000/api
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+E então:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev        # http://localhost:5173
 ```
+
+## Scripts
+
+| Comando | Para que serve |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento com recarga automática. |
+| `npm run build` | Checagem de tipos (TypeScript) e build de produção em `dist/`. |
+| `npm run lint` | Análise estática com ESLint. |
+| `npm run preview` | Serve localmente o build de `dist/`. |

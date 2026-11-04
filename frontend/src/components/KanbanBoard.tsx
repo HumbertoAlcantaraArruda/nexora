@@ -4,6 +4,7 @@ import type {
   KanbanBoard as Board,
   KanbanColumn as Column,
   Task,
+  TaskDragState,
 } from "../types/kanban";
 
 import { getBoards } from "../services/boardService";
@@ -31,6 +32,7 @@ export default function KanbanBoard() {
   const [showColumnForm, setShowColumnForm] = useState(false);
   const [moveTask, setMoveTask] = useState<Task | null>(null);
   const [targetColumnId, setTargetColumnId] = useState("");
+  const [dragState, setDragState] = useState<TaskDragState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -304,6 +306,38 @@ export default function KanbanBoard() {
     }
   }
 
+  function handleTaskDragStart(taskId: number, sourceColumnId: number) {
+    setDragState({
+      taskId,
+      sourceColumnId,
+      overColumnId: null,
+      insertIndex: null,
+    });
+  }
+
+  function handleTaskDragOver(columnId: number, insertIndex: number) {
+    // dragover dispara continuamente; só atualiza quando algo muda.
+    setDragState((current) =>
+      current &&
+      (current.overColumnId !== columnId ||
+        current.insertIndex !== insertIndex)
+        ? { ...current, overColumnId: columnId, insertIndex }
+        : current,
+    );
+  }
+
+  function handleTaskDragLeave(columnId: number) {
+    setDragState((current) =>
+      current && current.overColumnId === columnId
+        ? { ...current, overColumnId: null, insertIndex: null }
+        : current,
+    );
+  }
+
+  function handleTaskDragEnd() {
+    setDragState(null);
+  }
+
   async function handleReorderTask(
     taskId: number,
     columnId: number,
@@ -442,6 +476,11 @@ export default function KanbanBoard() {
                 onMoveTask={setMoveTask}
                 onDropTask={handleDropTask}
                 onReorderTask={handleReorderTask}
+                dragState={dragState}
+                onTaskDragStart={handleTaskDragStart}
+                onTaskDragOver={handleTaskDragOver}
+                onTaskDragLeave={handleTaskDragLeave}
+                onTaskDragEnd={handleTaskDragEnd}
                 onDeleteColumn={handleDeleteColumn}
               />
             ))}

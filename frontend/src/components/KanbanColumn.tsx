@@ -1,6 +1,10 @@
 
 import { useState, type DragEvent, type FormEvent } from "react";
-import type { KanbanColumn as Column, Task } from "../types/kanban";
+import type {
+  KanbanColumn as Column,
+  Task,
+  TaskDragState,
+} from "../types/kanban";
 import TaskCard from "./TaskCard";
 
 interface KanbanColumnProps {
@@ -25,6 +29,11 @@ interface KanbanColumnProps {
     insertIndex: number,
   ) => Promise<void>;
   onDeleteColumn: (id: number) => Promise<void>;
+  dragState: TaskDragState | null;
+  onTaskDragStart: (taskId: number, sourceColumnId: number) => void;
+  onTaskDragOver: (columnId: number, insertIndex: number) => void;
+  onTaskDragLeave: (columnId: number) => void;
+  onTaskDragEnd: () => void;
 }
 
 export default function KanbanColumn({
@@ -35,13 +44,36 @@ export default function KanbanColumn({
   onDropTask,
   onReorderTask,
   onDeleteColumn,
+  dragState,
+  onTaskDragStart,
+  onTaskDragOver,
+  onTaskDragLeave,
+  onTaskDragEnd,
 }: KanbanColumnProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
+
+  const isDragOver = dragState?.overColumnId === column.id;
+  const isReordering =
+    isDragOver && dragState?.sourceColumnId === column.id;
+  const isReceiving =
+    isDragOver && dragState?.sourceColumnId !== column.id;
+
+  // Ponto de inserção exibido ao reordenar; omitido quando soltar ali não
+  // mudaria a ordem (logo acima ou logo abaixo da própria tarefa).
+  const draggedIndex = isReordering
+    ? column.tasks.findIndex((task) => task.id === dragState?.taskId)
+    : -1;
+  const insertIndex = isReordering ? dragState?.insertIndex ?? null : null;
+  const dropIndicatorIndex =
+    insertIndex !== null &&
+    insertIndex !== draggedIndex &&
+    insertIndex !== draggedIndex + 1
+      ? insertIndex
+      : null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,12 +101,20 @@ export default function KanbanColumn({
   ) {
     event.dataTransfer.setData("text/plain", String(taskId));
     event.dataTransfer.effectAllowed = "move";
+
+    // Adia a atualização para o navegador capturar a imagem de arraste
+    // antes de o cartão receber o estilo esmaecido.
+    window.setTimeout(() => onTaskDragStart(taskId, column.id), 0);
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    setIsDragOver(true);
+
+    onTaskDragOver(
+      column.id,
+      getInsertIndex(event.currentTarget, event.clientY),
+    );
   }
 
   function handleDragLeave(event: DragEvent<HTMLDivElement>) {
@@ -87,12 +127,15 @@ export default function KanbanColumn({
       return;
     }
 
-    setIsDragOver(false);
+    onTaskDragLeave(column.id);
   }
 
   async function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
-    setIsDragOver(false);
+
+    // O cartão de origem pode ser desmontado ao mudar de coluna, e aí o
+    // dragend não dispara; por isso o estado também é limpo aqui.
+    onTaskDragEnd();
 
     const taskId = Number(event.dataTransfer.getData("text/plain"));
 
@@ -160,17 +203,33 @@ export default function KanbanColumn({
       </header>
 
       <div
-        className={`task-list${isDragOver ? " task-list-drag-over" : ""}`}
+        className={[
+          "task-list",
+          isReceiving && "task-list-drag-over",
+          isReordering && "task-list-reordering",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={(event) => void handleDrop(event)}
       >
-        {column.tasks.map((task) => (
+        {column.tasks.map((task, index) => (
           <div
             key={task.id}
-            className="draggable-task"
+            className={[
+              "draggable-task",
+              dragState?.taskId === task.id && "draggable-task-dragging",
+              dropIndicatorIndex === index && "drop-before",
+              dropIndicatorIndex === column.tasks.length &&
+                index === column.tasks.length - 1 &&
+                "drop-after",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             draggable
             onDragStart={(event) => handleDragStart(event, task.id)}
+            onDragEnd={onTaskDragEnd}
           >
             <TaskCard
               task={task}

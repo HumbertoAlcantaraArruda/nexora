@@ -397,7 +397,43 @@ button:disabled {
 }
 
 .draggable-task {
+  position: relative;
   cursor: grab;
+  transition: opacity 0.15s ease;
+}
+
+/* Tarefa sendo arrastada: permanece no lugar, esmaecida e tracejada. */
+.draggable-task-dragging {
+  opacity: 0.45;
+}
+
+.draggable-task-dragging .task-card {
+  border-style: dashed;
+  border-color: #4f46e5;
+  box-shadow: none;
+}
+
+/* Linha que indica onde a tarefa será inserida ao reordenar na coluna.
+   Fica no espaço (gap) entre os cartões, sem deslocar o layout. */
+.drop-before::before,
+.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 2px rgb(79 70 229 / 18%);
+  pointer-events: none;
+}
+
+.drop-before::before {
+  top: -7.5px;
+}
+
+.drop-after::after {
+  bottom: -7.5px;
 }
 
 .draggable-task:active {
@@ -411,9 +447,17 @@ button:disabled {
     outline-color 0.2s ease;
 }
 
+/* Tarefa vinda de outra coluna: destaque forte da coluna de destino. */
 .task-list-drag-over {
   background-color: #e0e7ff;
   outline: 2px dashed #4f46e5;
   outline-offset: -2px;
+  border-radius: 8px;
+}
+
+/* Reordenação na própria coluna: destaque discreto; a linha de inserção
+   é o principal indicador. */
+.task-list-reordering {
+  background-color: rgb(79 70 229 / 5%);
   border-radius: 8px;
 }

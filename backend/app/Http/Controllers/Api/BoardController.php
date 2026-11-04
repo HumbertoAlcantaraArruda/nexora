@@ -2,25 +2,33 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesBoardAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Board;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BoardController extends Controller
 {
+    use AuthorizesBoardAccess;
+
     /**
-     * Lista os quadros do usuário autenticado, com a quantidade de colunas
-     * e tarefas de cada um (exibida na tela de quadros).
+     * Lista os quadros do usuário e os compartilhados com ele, com a
+     * quantidade de colunas e tarefas, o dono e a permissão de cada um.
      */
     public function index(Request $request): JsonResponse
     {
-        $boards = $request->user()
-            ->boards()
+        $user = $request->user();
+
+        $boards = Board::query()
+            ->accessibleBy($user)
+            ->with($this->currentMembership($user))
             ->withCount(['columns', 'tasks'])
             ->latest()
-            ->get();
+            ->get()
+            ->each(fn (Board $board) => $board->presentFor($user));
 
         return response()->json([
             'mensagem' => 'ok',
@@ -44,31 +52,37 @@ class BoardController extends Controller
 
         return response()->json([
             'mensagem' => 'ok',
-            'quadro' => $board,
+            'quadro' => $board->presentFor($request->user()),
         ], 201);
     }
 
     /**
-     * Exibe um quadro específico.
+     * Exibe um quadro (próprio ou compartilhado) com colunas e tarefas.
      */
     public function show(Request $request, string $id): JsonResponse
     {
-        $board = $this->findUserBoard($request, $id)
-            ->with('columns.tasks')
-            ->firstOrFail();
+        $user = $request->user();
+
+        $board = Board::query()
+            ->accessibleBy($user)
+            ->with(['columns.tasks', ...$this->currentMembership($user)])
+            ->findOrFail($id);
 
         return response()->json([
             'mensagem' => 'ok',
-            'quadro' => $board,
+            'quadro' => $board->presentFor($user),
         ]);
     }
 
     /**
-     * Atualiza um quadro.
+     * Atualiza nome e descrição. Somente o dono.
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $board = $this->findUserBoard($request, $id)->firstOrFail();
+        $user = $request->user();
+        $board = Board::query()->accessibleBy($user)->findOrFail($id);
+
+        $this->ensureIsOwner($board, $user);
 
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
@@ -79,17 +93,20 @@ class BoardController extends Controller
 
         return response()->json([
             'mensagem' => 'ok',
-            'quadro' => $board->refresh(),
+            'quadro' => $board->refresh()->presentFor($user),
         ]);
     }
 
     /**
-     * Exclui um quadro. Colunas e tarefas são removidas em cascata pelas
-     * chaves estrangeiras.
+     * Exclui um quadro. Somente o dono. Colunas, tarefas e compartilhamentos
+     * são removidos em cascata pelas chaves estrangeiras.
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $board = $this->findUserBoard($request, $id)->firstOrFail();
+        $user = $request->user();
+        $board = Board::query()->accessibleBy($user)->findOrFail($id);
+
+        $this->ensureIsOwner($board, $user);
 
         $board->delete();
 
@@ -99,12 +116,15 @@ class BoardController extends Controller
     }
 
     /**
-     * Busca somente quadros pertencentes ao usuário autenticado.
+     * Carrega só o vínculo do usuário atual com o quadro, para calcular a
+     * permissão sem consultas extras por quadro.
+     *
+     * @return array<string, \Closure>
      */
-    private function findUserBoard(Request $request, string $id): Builder
+    private function currentMembership(User $user): array
     {
-        return Board::query()
-            ->where('user_id', $request->user()->id)
-            ->where('id', $id);
+        return [
+            'members' => fn ($query) => $query->where('users.id', $user->id),
+        ];
     }
 }

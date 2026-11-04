@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesBoardAccess;
 use App\Http\Controllers\Controller;
 use App\Models\BoardColumn;
 use App\Models\Task;
@@ -11,17 +12,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TaskController extends Controller
 {
+    use AuthorizesBoardAccess;
+
     /**
-     * Lista as tarefas dos quadros do usuário autenticado.
+     * Lista as tarefas dos quadros que o usuário acessa.
      */
     public function index(Request $request): JsonResponse
     {
         $tasks = Task::query()
             ->whereHas('column.board', function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
+                $query->accessibleBy($request->user());
             })
             ->with('column')
             ->orderBy('position')
@@ -34,7 +38,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Cria uma tarefa em uma coluna de um quadro do usuário.
+     * Cria uma tarefa em uma coluna de um quadro que o usuário pode editar.
      */
     public function store(Request $request): JsonResponse
     {
@@ -55,11 +59,9 @@ class TaskController extends Controller
             'position' => ['sometimes', 'integer', 'min:0'],
         ]);
 
-        $column = BoardColumn::query()
-            ->whereHas('board', function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
-            })
-            ->findOrFail($validated['board_column_id']);
+        $column = $this->findAccessibleColumn($request, $validated['board_column_id']);
+
+        $this->ensureCanEdit($column->board, $request->user());
 
         $task = $column->tasks()->create([
             'title' => $validated['title'],
@@ -96,7 +98,10 @@ class TaskController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $task = $this->findUserTask($request, $id)
+            ->with('column.board')
             ->firstOrFail();
+
+        $this->ensureCanEdit($task->column->board, $request->user());
 
         $validated = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:255'],
@@ -117,11 +122,9 @@ class TaskController extends Controller
         ]);
 
         if (isset($validated['board_column_id'])) {
-            BoardColumn::query()
-                ->whereHas('board', function ($query) use ($request) {
-                    $query->where('user_id', $request->user()->id);
-                })
-                ->findOrFail($validated['board_column_id']);
+            $target = $this->findAccessibleColumn($request, $validated['board_column_id']);
+
+            $this->ensureCanEdit($target->board, $request->user());
         }
 
         $task->update($validated);
@@ -148,6 +151,8 @@ class TaskController extends Controller
             'columns.*.task_ids.*' => ['required', 'integer', 'distinct'],
         ]);
 
+        $user = $request->user();
+
         $columnIds = array_map(
             fn (array $column): int => (int) $column['id'],
             $validated['columns'],
@@ -161,26 +166,23 @@ class TaskController extends Controller
         );
 
         $tasks = DB::transaction(function () use (
-            $request,
+            $user,
             $validated,
             $columnIds,
             $submittedTaskIds,
         ) {
-            $userColumnsCount = BoardColumn::query()
-                ->whereHas('board', function ($query) use ($request) {
-                    $query->where('user_id', $request->user()->id);
-                })
+            // Colunas e tarefas precisam existir para o usuário (senão 404)...
+            $accessibleColumns = BoardColumn::query()
+                ->whereHas('board', fn ($query) => $query->accessibleBy($user))
                 ->whereIn('id', $columnIds)
                 ->count();
 
-            if ($userColumnsCount !== count($columnIds)) {
+            if ($accessibleColumns !== count($columnIds)) {
                 throw new ModelNotFoundException();
             }
 
             $userTasks = Task::query()
-                ->whereHas('column.board', function ($query) use ($request) {
-                    $query->where('user_id', $request->user()->id);
-                })
+                ->whereHas('column.board', fn ($query) => $query->accessibleBy($user))
                 ->whereIn('id', $submittedTaskIds)
                 ->lockForUpdate()
                 ->get()
@@ -188,6 +190,21 @@ class TaskController extends Controller
 
             if ($userTasks->count() !== count($submittedTaskIds)) {
                 throw new ModelNotFoundException();
+            }
+
+            // ...e estar em quadros que ele pode editar (senão 403).
+            $editableColumns = BoardColumn::query()
+                ->whereHas('board', fn ($query) => $query->editableBy($user))
+                ->whereIn('id', $columnIds)
+                ->count();
+
+            $editableTasks = Task::query()
+                ->whereHas('column.board', fn ($query) => $query->editableBy($user))
+                ->whereIn('id', $submittedTaskIds)
+                ->count();
+
+            if ($editableColumns !== count($columnIds) || $editableTasks !== count($submittedTaskIds)) {
+                throw new HttpException(403, 'Você tem acesso somente para visualizar este quadro.');
             }
 
             // Toda tarefa que hoje está nas colunas enviadas precisa constar na
@@ -240,7 +257,10 @@ class TaskController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $task = $this->findUserTask($request, $id)
+            ->with('column.board')
             ->firstOrFail();
+
+        $this->ensureCanEdit($task->column->board, $request->user());
 
         DB::transaction(function () use ($task) {
             $task->delete();
@@ -257,7 +277,8 @@ class TaskController extends Controller
     }
 
     /**
-     * Busca tarefas somente nos quadros do usuário autenticado.
+     * Busca tarefas somente nos quadros que o usuário acessa (próprios ou
+     * compartilhados). A permissão de edição é conferida em cada ação.
      */
     private function findUserTask(
         Request $request,
@@ -265,8 +286,18 @@ class TaskController extends Controller
     ): Builder {
         return Task::query()
             ->whereHas('column.board', function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
+                $query->accessibleBy($request->user());
             })
             ->where('id', $id);
+    }
+
+    private function findAccessibleColumn(Request $request, int|string $id): BoardColumn
+    {
+        return BoardColumn::query()
+            ->whereHas('board', function ($query) use ($request) {
+                $query->accessibleBy($request->user());
+            })
+            ->with('board')
+            ->findOrFail($id);
     }
 }

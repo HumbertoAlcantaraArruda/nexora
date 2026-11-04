@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesBoardAccess;
 use App\Http\Controllers\Controller;
+use App\Models\Board;
 use App\Models\BoardColumn;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 class BoardColumnController extends Controller
 {
+    use AuthorizesBoardAccess;
+
     /**
      * Cor do ícone da coluna: hexadecimal de 6 dígitos (#rrggbb). Nula usa a
      * cor padrão pela posição.
@@ -20,13 +24,13 @@ class BoardColumnController extends Controller
     private const COLOR_MESSAGES = ['color.regex' => 'A cor deve estar no formato #rrggbb.'];
 
     /**
-     * Lista as colunas dos quadros do usuário autenticado.
+     * Lista as colunas dos quadros que o usuário acessa.
      */
     public function index(Request $request): JsonResponse
     {
         $columns = BoardColumn::query()
             ->whereHas('board', function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
+                $query->accessibleBy($request->user());
             })
             ->with('tasks')
             ->orderBy('position')
@@ -50,9 +54,11 @@ class BoardColumnController extends Controller
             'color' => self::COLOR_RULES,
         ], self::COLOR_MESSAGES);
 
-        $board = $request->user()
-            ->boards()
+        $board = Board::query()
+            ->accessibleBy($request->user())
             ->findOrFail($validated['board_id']);
+
+        $this->ensureCanEdit($board, $request->user());
 
         $column = $board->columns()->create([
             'name' => $validated['name'],
@@ -87,7 +93,10 @@ class BoardColumnController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $column = $this->findUserColumn($request, $id)
+            ->with('board')
             ->firstOrFail();
+
+        $this->ensureCanEdit($column->board, $request->user());
 
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
@@ -122,9 +131,11 @@ class BoardColumnController extends Controller
             'column_ids.*' => ['required', 'integer', 'distinct'],
         ]);
 
-        $board = $request->user()
-            ->boards()
+        $board = Board::query()
+            ->accessibleBy($request->user())
             ->findOrFail($validated['board_id']);
+
+        $this->ensureCanEdit($board, $request->user());
 
         $submittedIds = array_map('intval', $validated['column_ids']);
 
@@ -172,7 +183,10 @@ class BoardColumnController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $column = $this->findUserColumn($request, $id)
+            ->with('board')
             ->firstOrFail();
+
+        $this->ensureCanEdit($column->board, $request->user());
 
         DB::transaction(function () use ($column) {
             $column->delete();
@@ -197,7 +211,8 @@ class BoardColumnController extends Controller
     }
 
     /**
-     * Busca somente colunas pertencentes aos quadros do usuário.
+     * Busca somente colunas dos quadros que o usuário acessa (próprios ou
+     * compartilhados). A permissão de edição é conferida em cada ação.
      */
     private function findUserColumn(
         Request $request,
@@ -205,7 +220,7 @@ class BoardColumnController extends Controller
     ): \Illuminate\Database\Eloquent\Builder {
         return BoardColumn::query()
             ->whereHas('board', function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
+                $query->accessibleBy($request->user());
             })
             ->where('id', $id);
     }

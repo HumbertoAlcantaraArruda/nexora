@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoardColumnController;
 use App\Http\Controllers\Api\BoardController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TaskController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Login
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+
+    // Configurações do usuário
+    Route::patch('/user', [ProfileController::class, 'update']);
+    Route::post('/user/avatar', [ProfileController::class, 'updateAvatar']);
+    Route::delete('/user/avatar', [ProfileController::class, 'destroyAvatar']);
 
     // Kanban
     Route::apiResource('boards', BoardController::class);

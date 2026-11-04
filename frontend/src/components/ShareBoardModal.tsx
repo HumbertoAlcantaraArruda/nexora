@@ -1,45 +1,66 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { confirmDialog } from "../confirmDialog";
 import { getApiErrorMessage, getFieldErrors } from "../services/apiErrors";
 import type { Board } from "../services/boardService";
 import {
-  addMember,
-  getMembers,
+  cancelInvitation,
+  getSharing,
+  inviteMember,
   removeMember,
   SHARE_ROLE_LABELS,
   updateMemberRole,
+  type BoardInvitation,
   type BoardMember,
+  type BoardSharing,
   type ShareRole,
 } from "../services/memberService";
+import type { PlatformUser } from "../services/userService";
 import Avatar from "./Avatar";
 import Icon from "./Icon";
 import Modal from "./Modal";
+import UserPicker from "./UserPicker";
 
 interface ShareBoardModalProps {
   board: Board;
   onClose: () => void;
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLES = Object.keys(SHARE_ROLE_LABELS) as ShareRole[];
 
-// Dono do quadro: convida pessoas pelo e-mail e ajusta quem pode o quê.
+// Dono do quadro: convida pessoas pelo nome (elas recebem um e-mail e
+// aceitam ou recusam) e ajusta quem pode o quê.
 export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps) {
-  const [members, setMembers] = useState<BoardMember[]>([]);
+  const [sharing, setSharing] = useState<BoardSharing>({
+    members: [],
+    invitations: [],
+  });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState("");
+  const [person, setPerson] = useState<PlatformUser | null>(null);
   const [role, setRole] = useState<ShareRole>("viewer");
-  const [emailError, setEmailError] = useState("");
+  const [personError, setPersonError] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const personLabelId = useId();
+
+  const { members, invitations } = sharing;
+
+  // Quem não deve aparecer na busca: o dono, quem já tem acesso e quem já
+  // tem convite pendente.
+  const excludeIds = [
+    board.user_id,
+    ...members.map((member) => member.id),
+    ...invitations.flatMap((invitation) =>
+      invitation.invitee ? [invitation.invitee.id] : [],
+    ),
+  ];
 
   useEffect(() => {
     let active = true;
 
-    getMembers(board.id)
-      .then((list) => {
-        if (active) setMembers(list);
+    getSharing(board.id)
+      .then((data) => {
+        if (active) setSharing(data);
       })
       .catch((err: unknown) => {
         if (active) {
@@ -65,10 +86,8 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
 
     try {
       await action();
-      return true;
     } catch (err) {
       setError(getApiErrorMessage(err, fallback));
-      return false;
     } finally {
       setBusy(false);
     }
@@ -77,38 +96,33 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
   async function handleInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmed = email.trim();
-
-    if (!EMAIL_PATTERN.test(trimmed)) {
-      setEmailError("Informe um e-mail válido.");
+    if (!person) {
+      setPersonError("Digite o nome e escolha a pessoa na lista.");
       return;
     }
 
     setBusy(true);
-    setEmailError("");
+    setPersonError("");
     setError("");
     setMessage("");
 
     try {
-      const list = await addMember(board.id, trimmed, role);
-      const added = list.find(
-        (member) => member.email.toLowerCase() === trimmed.toLowerCase(),
-      );
+      const result = await inviteMember(board.id, person.id, role);
 
-      setMembers(list);
-      setEmail("");
+      setSharing({ members: result.members, invitations: result.invitations });
+      setPerson(null);
       setMessage(
-        added
-          ? `${added.name} agora ${role === "editor" ? "pode editar" : "pode visualizar"} este quadro.`
-          : "Quadro compartilhado.",
+        result.emailSent
+          ? `Convite enviado para ${person.name}. O acesso começa quando o convite for aceito.`
+          : `Convite criado para ${person.name}, mas o e-mail não pôde ser enviado. A pessoa verá o convite ao entrar na Nexora.`,
       );
     } catch (err) {
-      const fieldError = getFieldErrors(err).email;
+      const fieldError = getFieldErrors(err).user_id;
 
       if (fieldError) {
-        setEmailError(fieldError);
+        setPersonError(fieldError);
       } else {
-        setError(getApiErrorMessage(err, "Não foi possível compartilhar."));
+        setError(getApiErrorMessage(err, "Não foi possível enviar o convite."));
       }
     } finally {
       setBusy(false);
@@ -117,7 +131,7 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
 
   async function handleRoleChange(member: BoardMember, nextRole: ShareRole) {
     await run("Não foi possível alterar a permissão.", async () => {
-      setMembers(await updateMemberRole(board.id, member.id, nextRole));
+      setSharing(await updateMemberRole(board.id, member.id, nextRole));
     });
   }
 
@@ -132,9 +146,29 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
 
     await run("Não foi possível remover o acesso.", async () => {
       await removeMember(board.id, member.id);
-      setMembers((current) => current.filter((item) => item.id !== member.id));
+      setSharing((current) => ({
+        ...current,
+        members: current.members.filter((item) => item.id !== member.id),
+      }));
     });
   }
+
+  async function handleCancelInvitation(invitation: BoardInvitation) {
+    const name = invitation.invitee?.name ?? "esta pessoa";
+    const confirmed = await confirmDialog({
+      title: `Cancelar o convite de ${name}?`,
+      text: "O link enviado por e-mail deixará de funcionar.",
+      danger: true,
+    });
+
+    if (!confirmed) return;
+
+    await run("Não foi possível cancelar o convite.", async () => {
+      setSharing(await cancelInvitation(board.id, invitation.id));
+    });
+  }
+
+  const nobody = members.length === 0 && invitations.length === 0;
 
   return (
     <Modal title={`Compartilhar "${board.name}"`} onClose={onClose} closeDisabled={busy}>
@@ -144,26 +178,29 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
           onSubmit={(event) => void handleInvite(event)}
           noValidate
         >
-          <label className="form-field share-invite-email">
-            E-mail da pessoa
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setEmailError("");
+          <div className="form-field share-invite-person">
+            <span id={personLabelId}>Pessoa</span>
+            <UserPicker
+              value={person}
+              onChange={(user) => {
+                setPerson(user);
+                setPersonError("");
                 setMessage("");
               }}
-              placeholder="nome@exemplo.com"
-              aria-invalid={emailError ? true : undefined}
-              autoFocus
+              placeholder="Digite o nome de quem você quer convidar"
+              excludeIds={excludeIds}
+              invalid={Boolean(personError)}
+              disabled={busy}
+              labelId={personLabelId}
             />
-            {emailError ? (
-              <span className="field-error">{emailError}</span>
+            {personError ? (
+              <span className="field-error">{personError}</span>
             ) : (
-              <span className="field-hint">A pessoa precisa ter uma conta.</span>
+              <span className="field-hint">
+                A pessoa recebe um e-mail e decide se aceita o convite.
+              </span>
             )}
-          </label>
+          </div>
 
           <label className="form-field">
             Permissão
@@ -181,7 +218,7 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
 
           <button type="submit" className="button button-primary" disabled={busy}>
             <Icon name="user-plus" size={16} />
-            Compartilhar
+            Enviar convite
           </button>
         </form>
 
@@ -203,14 +240,14 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
 
           {loading ? (
             <p className="muted">Carregando...</p>
-          ) : members.length === 0 ? (
+          ) : nobody ? (
             <p className="share-empty">
-              Só você tem acesso. Compartilhe para trabalhar junto.
+              Só você tem acesso. Convide alguém para trabalhar junto.
             </p>
           ) : (
             <ul className="share-members">
               {members.map((member) => (
-                <li key={member.id} className="share-member">
+                <li key={`m-${member.id}`} className="share-member">
                   <Avatar user={member} size={36} />
 
                   <span className="share-member-text">
@@ -246,6 +283,41 @@ export default function ShareBoardModal({ board, onClose }: ShareBoardModalProps
                   </button>
                 </li>
               ))}
+
+              {invitations.map((invitation) =>
+                invitation.invitee ? (
+                  <li key={`c-${invitation.id}`} className="share-member">
+                    <Avatar user={invitation.invitee} size={36} />
+
+                    <span className="share-member-text">
+                      <span className="share-member-name">
+                        {invitation.invitee.name}
+                      </span>
+                      <span className="share-member-email">
+                        {invitation.invitee.email}
+                      </span>
+                    </span>
+
+                    <span
+                      className="role-badge role-badge-pending"
+                      title={`Convite enviado: ${SHARE_ROLE_LABELS[invitation.role].toLowerCase()}`}
+                    >
+                      Convite pendente
+                    </span>
+
+                    <button
+                      type="button"
+                      className="icon-button icon-button-danger"
+                      onClick={() => void handleCancelInvitation(invitation)}
+                      disabled={busy}
+                      title="Cancelar convite"
+                      aria-label={`Cancelar o convite de ${invitation.invitee.name}`}
+                    >
+                      <Icon name="x" size={16} />
+                    </button>
+                  </li>
+                ) : null,
+              )}
             </ul>
           )}
         </section>

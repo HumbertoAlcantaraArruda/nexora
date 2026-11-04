@@ -2,11 +2,18 @@
 //   #/            -> tela "Meus quadros"
 //   #/quadros/ID  -> kanban do quadro ID
 //   #/configuracoes -> configurações do usuário
+//   #/convites/ID -> convite para um quadro (link enviado por e-mail)
 // Mantém o quadro aberto ao recarregar a página e permite usar o botão
 // "Voltar" do navegador.
 
 const BOARD_HASH = /^#\/quadros\/(\d+)$/;
 const SETTINGS_HASH = "#/configuracoes";
+const INVITATION_HASH = /^#\/convites\/(\d+)$/;
+
+export function getInvitationIdFromHash(): number | null {
+  const match = INVITATION_HASH.exec(window.location.hash);
+  return match ? Number(match[1]) : null;
+}
 
 export function isSettingsHash(): boolean {
   return window.location.hash === SETTINGS_HASH;

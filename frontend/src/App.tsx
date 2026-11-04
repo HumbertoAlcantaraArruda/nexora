@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AuthForm from "./components/AuthForm";
 import BoardFormModal, { type BoardFormData } from "./components/BoardFormModal";
 import BoardList from "./components/BoardList";
+import InvitationPage from "./components/InvitationPage";
 import KanbanBoard from "./components/KanbanBoard";
 import SettingsPage from "./components/SettingsPage";
 import ShareBoardModal from "./components/ShareBoardModal";
@@ -9,7 +10,13 @@ import Sidebar from "./components/Sidebar";
 import { confirmDialog } from "./confirmDialog";
 import { SESSION_EXPIRED_EVENT } from "./services/api";
 import { getApiErrorMessage } from "./services/apiErrors";
-import { removeMember } from "./services/memberService";
+import {
+  acceptInvitation,
+  declineInvitation,
+  getMyInvitations,
+  removeMember,
+  type BoardInvitation,
+} from "./services/memberService";
 import {
   getAuthenticatedUser,
   logout,
@@ -24,6 +31,7 @@ import {
 } from "./services/boardService";
 import {
   getBoardIdFromHash,
+  getInvitationIdFromHash,
   goToBoard,
   goToBoardList,
   goToSettings,
@@ -42,6 +50,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [boardId, setBoardId] = useState<number | null>(getBoardIdFromHash);
   const [settingsOpen, setSettingsOpen] = useState(isSettingsHash);
+  const [invitationId, setInvitationId] = useState<number | null>(
+    getInvitationIdFromHash,
+  );
+  // Convites recebidos e ainda não respondidos.
+  const [invitations, setInvitations] = useState<BoardInvitation[]>([]);
   // A barra lateral fica sempre visível como um trilho de ícones; expandida,
   // empurra o conteúdo e recolhe ao clicar fora dela.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -95,6 +108,7 @@ export default function App() {
     function handleHashChange() {
       setBoardId(getBoardIdFromHash());
       setSettingsOpen(isSettingsHash());
+      setInvitationId(getInvitationIdFromHash());
       window.scrollTo(0, 0);
       setSidebarExpanded(false);
     }
@@ -105,6 +119,11 @@ export default function App() {
   }, []);
 
   const loadBoards = useCallback(async () => {
+    // Os convites vêm junto; uma falha neles não impede a lista de quadros.
+    getMyInvitations()
+      .then(setInvitations)
+      .catch(() => {});
+
     try {
       setBoards(await getBoards());
       setBoardsError("");
@@ -177,10 +196,14 @@ export default function App() {
     };
   }
 
-  // Após o login o usuário sempre começa na tela "Meus quadros".
+  // Após o login o usuário começa na tela "Meus quadros", exceto quando veio
+  // pelo link de um convite: aí o convite continua aberto.
   function handleAuthenticated(authenticatedUser: User) {
-    goToBoardList();
-    setBoardId(null);
+    if (getInvitationIdFromHash() === null) {
+      goToBoardList();
+      setBoardId(null);
+    }
+
     boardsLoadedRef.current = false;
     setBoardsLoading(true);
     setUser(authenticatedUser);
@@ -194,9 +217,62 @@ export default function App() {
       goToBoardList();
       setBoardId(null);
       setBoards([]);
+      setInvitations([]);
       boardsLoadedRef.current = false;
       setBoardsLoading(true);
       setUser(null);
+    }
+  }
+
+  // ---- Convites recebidos ---------------------------------------------------
+
+  async function handleAcceptInvitation(invitation: BoardInvitation) {
+    setBoardBusy(true);
+    setBoardsError("");
+
+    try {
+      await acceptInvitation(invitation.id);
+      setInvitations((current) =>
+        current.filter((item) => item.id !== invitation.id),
+      );
+      await loadBoards();
+
+      if (invitation.board) goToBoard(invitation.board.id);
+    } catch (err) {
+      setBoardsError(
+        getApiErrorMessage(err, "Não foi possível aceitar o convite."),
+      );
+      await loadBoards();
+    } finally {
+      setBoardBusy(false);
+    }
+  }
+
+  async function handleDeclineInvitation(invitation: BoardInvitation) {
+    const confirmed = await confirmDialog({
+      title: `Recusar o convite para "${invitation.board?.name ?? "o quadro"}"?`,
+      text: "Você não terá acesso ao quadro. Para entrar depois, será preciso um novo convite.",
+      danger: true,
+    });
+
+    if (!confirmed) return;
+
+    setBoardBusy(true);
+    setBoardsError("");
+
+    try {
+      await declineInvitation(invitation.id);
+      setInvitations((current) =>
+        current.filter((item) => item.id !== invitation.id),
+      );
+      goToBoardList();
+    } catch (err) {
+      setBoardsError(
+        getApiErrorMessage(err, "Não foi possível recusar o convite."),
+      );
+      await loadBoards();
+    } finally {
+      setBoardBusy(false);
     }
   }
 
@@ -349,6 +425,7 @@ export default function App() {
         boards={boards}
         activeBoardId={boardId}
         settingsActive={settingsOpen}
+        invitationCount={invitations.length}
         user={user}
         expanded={sidebarExpanded}
         onToggle={() => setSidebarExpanded((current) => !current)}
@@ -366,7 +443,17 @@ export default function App() {
       <div className="sidebar-backdrop" aria-hidden="true" />
 
       <main className="app-main">
-        {settingsOpen ? (
+        {invitationId !== null ? (
+          <InvitationPage
+            key={invitationId}
+            invitationId={invitationId}
+            busy={boardBusy}
+            onAccept={handleAcceptInvitation}
+            onDecline={handleDeclineInvitation}
+            onGoHome={goToBoardList}
+            onOpenBoard={goToBoard}
+          />
+        ) : settingsOpen ? (
           <SettingsPage user={user} onUserUpdated={setUser} />
         ) : boardId === null ? (
           <BoardList
@@ -380,6 +467,13 @@ export default function App() {
             onShareBoard={setShareBoard}
             onDeleteBoard={(board) => void handleDeleteBoard(board)}
             onLeaveBoard={(board) => void handleLeaveBoard(board)}
+            invitations={invitations}
+            onAcceptInvitation={(invitation) =>
+              void handleAcceptInvitation(invitation)
+            }
+            onDeclineInvitation={(invitation) =>
+              void handleDeclineInvitation(invitation)
+            }
           />
         ) : (
           <KanbanBoard

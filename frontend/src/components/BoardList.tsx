@@ -1,4 +1,6 @@
 import type { Board } from "../services/boardService";
+import type { BoardInvitation } from "../services/memberService";
+import { InvitationCard } from "./InvitationPage";
 import { initials } from "../initials";
 import Icon from "./Icon";
 import OwnerTag from "./OwnerTag";
@@ -15,6 +17,10 @@ interface BoardListProps {
   onShareBoard: (board: Board) => void;
   onDeleteBoard: (board: Board) => void;
   onLeaveBoard: (board: Board) => void;
+  // Convites recebidos e ainda não respondidos.
+  invitations: BoardInvitation[];
+  onAcceptInvitation: (invitation: BoardInvitation) => void;
+  onDeclineInvitation: (invitation: BoardInvitation) => void;
 }
 
 function plural(count: number, singular: string, pluralForm: string) {
@@ -33,6 +39,9 @@ export default function BoardList({
   onShareBoard,
   onDeleteBoard,
   onLeaveBoard,
+  invitations,
+  onAcceptInvitation,
+  onDeclineInvitation,
 }: BoardListProps) {
   const ownBoards = boards.filter((board) => board.permission === "owner");
   const sharedBoards = boards.filter((board) => board.permission !== "owner");
@@ -166,6 +175,30 @@ export default function BoardList({
           <p className="alert alert-error" role="alert">
             {error}
           </p>
+        )}
+
+        {invitations.length > 0 && (
+          <section
+            className="invitations-section"
+            aria-labelledby="invitations-title"
+          >
+            <h2 id="invitations-title" className="board-section-title">
+              <Icon name="user-plus" size={18} />
+              Convites pendentes ({invitations.length})
+            </h2>
+
+            <div className="invitation-grid">
+              {invitations.map((invitation) => (
+                <InvitationCard
+                  key={invitation.id}
+                  invitation={invitation}
+                  busy={busy}
+                  onAccept={() => onAcceptInvitation(invitation)}
+                  onDecline={() => onDeclineInvitation(invitation)}
+                />
+              ))}
+            </div>
+          </section>
         )}
 
         {loading ? (

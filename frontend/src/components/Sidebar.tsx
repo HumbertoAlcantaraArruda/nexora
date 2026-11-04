@@ -11,6 +11,8 @@ interface SidebarProps {
   boards: Board[];
   activeBoardId: number | null;
   settingsActive: boolean;
+  // Convites pendentes: aparecem como um número ao lado de "Meus quadros".
+  invitationCount: number;
   user: User;
   expanded: boolean;
   onToggle: () => void;
@@ -28,6 +30,7 @@ const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
     boards,
     activeBoardId,
     settingsActive,
+    invitationCount,
     user,
     expanded,
     onToggle,
@@ -120,6 +123,14 @@ const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
         >
           <span className="sidebar-item-icon">
             <Icon name="grid" size={18} />
+            {invitationCount > 0 && (
+              <span
+                className="sidebar-badge"
+                aria-label={`${invitationCount} ${invitationCount === 1 ? "convite pendente" : "convites pendentes"}`}
+              >
+                {invitationCount}
+              </span>
+            )}
           </span>
           <span className="sidebar-item-label">Meus quadros</span>
         </button>

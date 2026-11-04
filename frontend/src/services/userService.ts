@@ -13,8 +13,18 @@ interface UsersResponse {
   usuarios: PlatformUser[];
 }
 
-// Todos os usuários da plataforma (para escolher o responsável de uma tarefa).
-export async function getUsers(): Promise<PlatformUser[]> {
-  const response = await api.get<UsersResponse>('/users');
+// A busca só acontece a partir deste número de letras.
+export const USER_SEARCH_MIN = 2;
+
+// Busca usuários pelo nome (ou e-mail): no máximo 10 resultados. Os usuários
+// nunca são listados todos de uma vez.
+export async function searchUsers(
+  term: string,
+  signal?: AbortSignal,
+): Promise<PlatformUser[]> {
+  const response = await api.get<UsersResponse>('/users', {
+    params: { search: term },
+    signal,
+  });
   return response.data.usuarios;
 }

@@ -3,7 +3,7 @@ import type { KanbanColumn as Column, Task } from "../types/kanban";
 import { confirmDialog } from "../confirmDialog";
 import type { PlatformUser } from "../services/userService";
 import Modal from "./Modal";
-import UserSelect from "./UserSelect";
+import UserPicker from "./UserPicker";
 
 export type TaskFormData = Pick<
   Task,
@@ -14,9 +14,6 @@ interface TaskFormModalProps {
   // Sem tarefa: criação; com tarefa: edição (campos preenchidos).
   task?: Task;
   columns: Column[];
-  // Usuários da plataforma para escolher o responsável.
-  users: PlatformUser[];
-  usersLoading: boolean;
   // Coluna pré-selecionada na criação.
   defaultColumnId?: number;
   saving: boolean;
@@ -47,8 +44,6 @@ function validate(title: string, description: string): string {
 export default function TaskFormModal({
   task,
   columns,
-  users,
-  usersLoading,
   defaultColumnId,
   saving,
   error,
@@ -66,8 +61,8 @@ export default function TaskFormModal({
   const [columnId, setColumnId] = useState(
     task?.board_column_id ?? defaultColumnId ?? columns[0]?.id ?? 0,
   );
-  const [assigneeId, setAssigneeId] = useState<number | null>(
-    task?.assignee_id ?? null,
+  const [assignee, setAssignee] = useState<PlatformUser | null>(
+    task?.assignee ?? null,
   );
   const [validationError, setValidationError] = useState("");
   const assigneeLabelId = useId();
@@ -89,7 +84,7 @@ export default function TaskFormModal({
         description: trimmedDescription || null,
         priority,
         due_date: dueDate || null,
-        assignee_id: assigneeId,
+        assignee_id: assignee?.id ?? null,
       },
       columnId,
     );
@@ -179,12 +174,11 @@ export default function TaskFormModal({
 
           <div className="form-field">
             <span id={assigneeLabelId}>Responsável</span>
-            <UserSelect
-              users={users}
-              value={assigneeId}
-              selectedUser={task?.assignee}
-              onChange={setAssigneeId}
-              loading={usersLoading}
+            <UserPicker
+              value={assignee}
+              onChange={setAssignee}
+              placeholder="Digite o nome do responsável"
+              emptyText="Sem responsável"
               disabled={readOnly}
               labelId={assigneeLabelId}
             />

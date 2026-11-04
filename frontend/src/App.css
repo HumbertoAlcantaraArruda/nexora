@@ -786,6 +786,11 @@ textarea {
   color: var(--color-text-muted);
 }
 
+.role-badge-pending {
+  background: color-mix(in srgb, var(--color-priority-medium) 16%, transparent);
+  color: var(--color-priority-medium-text);
+}
+
 /* "Quadro de: (foto) Nome". */
 .owner-tag {
   display: inline-flex;
@@ -842,7 +847,7 @@ textarea {
   align-items: start;
 }
 
-.share-invite-email {
+.share-invite-person {
   grid-column: 1 / -1;
 }
 
@@ -1755,42 +1760,34 @@ textarea {
   white-space: nowrap;
 }
 
-/* Select de usuários (foto, nome e e-mail). */
-.user-select {
+/* Busca de usuários (foto, nome e e-mail): responsável e convites. */
+.user-picker {
   position: relative;
 }
 
-.user-select-trigger {
+.user-picker-input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.user-picker-selected {
   display: flex;
-  width: 100%;
   min-height: 44px;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px;
+  padding: 6px 6px 6px 12px;
   border: 1px solid var(--color-input-border);
   border-radius: 6px;
   background: var(--color-input-bg);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 14px;
-  text-align: left;
-  transition: border-color 0.15s ease;
 }
 
-.user-select-trigger:hover:not(:disabled),
-.user-select-trigger[aria-expanded="true"] {
-  border-color: var(--color-primary);
-}
-
-.user-select-trigger:disabled {
+.user-picker-disabled {
+  padding-right: 12px;
   background: var(--color-hover);
-  cursor: default;
 }
 
-.user-select-trigger > .icon {
+.user-picker-selected .icon-button {
   flex-shrink: 0;
   margin-left: auto;
-  color: var(--color-text-muted);
 }
 
 .user-select-placeholder {
@@ -1827,6 +1824,7 @@ textarea {
 
 .user-select-popover {
   position: absolute;
+  margin: 0;
   top: calc(100% + 6px);
   right: 0;
   left: 0;
@@ -1836,16 +1834,6 @@ textarea {
   border-radius: 8px;
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-elevated);
-}
-
-.user-select-search {
-  border: 0;
-  border-bottom: 1px solid var(--color-border);
-  border-radius: 0;
-}
-
-.user-select-search:focus {
-  outline: none;
 }
 
 .user-select-list {
@@ -1887,4 +1875,91 @@ textarea {
   padding: 10px;
   color: var(--color-text-muted);
   font-size: 13px;
+}
+
+/* =========================================================================
+   Convites recebidos
+   ========================================================================= */
+
+.invitations-section {
+  margin-bottom: 40px;
+}
+
+.invitation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.invitation-page {
+  max-width: 560px;
+}
+
+.invitation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.invitation-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invitation-card-header p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.invitation-card-header strong {
+  color: var(--color-text);
+}
+
+.invitation-card-description {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.invitation-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invitation-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Número de convites pendentes sobre o ícone de "Meus quadros". */
+.sidebar-item-icon {
+  position: relative;
+}
+
+.sidebar-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--color-error);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
 }

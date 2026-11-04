@@ -736,50 +736,73 @@ export default function KanbanBoard({
         </p>
       )}
 
-      <div
-        className="kanban-columns"
-        onDragOver={handleColumnsDragOver}
-        onDragLeave={handleColumnsDragLeave}
-        onDrop={(event) => void handleColumnsDrop(event)}
-      >
-        {columns.map((column, index) => (
-          <Fragment key={column.id}>
-            {columnDropIndex === index && columnDropIndicator}
-            <KanbanColumn
-              column={column}
-              color={columnColor(column, index)}
-              busy={saving}
-              onOpenTask={(task) => openTaskModal({ mode: "edit", task })}
-              onEditColumn={(item) =>
-                openColumnModal({ mode: "edit", column: item })
-              }
-              onDropTask={handleDropTask}
-              onReorderTask={handleReorderTask}
-              onDeleteColumn={handleDeleteColumn}
-              dragState={dragState}
-              onTaskDragStart={handleTaskDragStart}
-              onTaskDragOver={handleTaskDragOver}
-              onTaskDragLeave={handleTaskDragLeave}
-              onTaskDragEnd={handleTaskDragEnd}
-              isColumnDragging={columnDrag?.columnId === column.id}
-              onColumnDragStart={handleColumnDragStart}
-              onColumnDragEnd={handleColumnDragEnd}
-            />
-          </Fragment>
-        ))}
-
-        {columnDropIndex === columns.length && columnDropIndicator}
-
-        <button
-          type="button"
-          className="new-column"
-          onClick={() => openColumnModal({ mode: "create" })}
-          disabled={saving}
+      {columns.length === 0 ? (
+        // Quadro sem colunas: convite no centro em vez de um quadro vazio.
+        <div className="page-content">
+          <div className="empty-state">
+            <Icon name="board" size={40} />
+            <h2>Este quadro ainda não tem colunas</h2>
+            <p>
+              Crie colunas como "A fazer", "Em andamento" e "Concluído" para
+              organizar suas tarefas.
+            </p>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => openColumnModal({ mode: "create" })}
+              disabled={saving}
+            >
+              <Icon name="plus" size={16} />
+              Nova coluna
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="kanban-columns"
+          onDragOver={handleColumnsDragOver}
+          onDragLeave={handleColumnsDragLeave}
+          onDrop={(event) => void handleColumnsDrop(event)}
         >
-          <Icon name="plus" size={20} />
-          Nova coluna
-        </button>
-      </div>
+          {columns.map((column, index) => (
+            <Fragment key={column.id}>
+              {columnDropIndex === index && columnDropIndicator}
+              <KanbanColumn
+                column={column}
+                color={columnColor(column, index)}
+                busy={saving}
+                onOpenTask={(task) => openTaskModal({ mode: "edit", task })}
+                onEditColumn={(item) =>
+                  openColumnModal({ mode: "edit", column: item })
+                }
+                onDropTask={handleDropTask}
+                onReorderTask={handleReorderTask}
+                onDeleteColumn={handleDeleteColumn}
+                dragState={dragState}
+                onTaskDragStart={handleTaskDragStart}
+                onTaskDragOver={handleTaskDragOver}
+                onTaskDragLeave={handleTaskDragLeave}
+                onTaskDragEnd={handleTaskDragEnd}
+                isColumnDragging={columnDrag?.columnId === column.id}
+                onColumnDragStart={handleColumnDragStart}
+                onColumnDragEnd={handleColumnDragEnd}
+              />
+            </Fragment>
+          ))}
+
+          {columnDropIndex === columns.length && columnDropIndicator}
+
+          <button
+            type="button"
+            className="new-column"
+            onClick={() => openColumnModal({ mode: "create" })}
+            disabled={saving}
+          >
+            <Icon name="plus" size={16} />
+            Nova coluna
+          </button>
+        </div>
+      )}
 
       {taskModal && (
         <TaskFormModal

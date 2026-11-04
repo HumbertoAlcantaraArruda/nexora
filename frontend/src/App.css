@@ -203,6 +203,50 @@ button:disabled {
   color: var(--color-error);
 }
 
+/* Botão de confirmação para ações destrutivas (ex.: "Sim" ao excluir). */
+.danger-solid-button {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.danger-solid-button:hover {
+  background: #b91c1c;
+}
+
+/* ---- Diálogos de confirmação (SweetAlert2) ----
+   Os seletores do SweetAlert2 usam :where() (especificidade zero), então
+   estas classes sobrescrevem as cores para seguir o tema claro/escuro. */
+.swal-popup {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-elevated);
+}
+
+.swal-title {
+  color: var(--color-text);
+  font-size: 22px;
+}
+
+.swal-text {
+  color: var(--color-text-muted);
+  font-size: 15px;
+}
+
+.swal-actions {
+  gap: 10px;
+}
+
+.swal-actions button {
+  min-width: 96px;
+}
+
+.swal-actions button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .theme-toggle {
   display: inline-grid;
   place-items: center;

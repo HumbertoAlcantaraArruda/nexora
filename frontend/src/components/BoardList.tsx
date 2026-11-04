@@ -6,6 +6,7 @@ import {
   type Board,
 } from "../services/boardService";
 import { getApiErrorMessage } from "../services/apiErrors";
+import { confirmDialog } from "../confirmDialog";
 
 interface BoardListProps {
   onOpenBoard: (boardId: number) => void;
@@ -71,18 +72,26 @@ export default function BoardList({ onOpenBoard }: BoardListProps) {
   }
 
   async function handleDeleteBoard(board: Board) {
-    const content = [
-      plural(board.columns_count ?? 0, "coluna", "colunas"),
-      plural(board.tasks_count ?? 0, "tarefa", "tarefas"),
-    ].join(" e ");
+    const columnsCount = board.columns_count ?? 0;
+    const tasksCount = board.tasks_count ?? 0;
 
-    if (
-      !window.confirm(
-        `Excluir o quadro "${board.name}"? Isso também apaga ${content}. Esta ação não pode ser desfeita.`,
-      )
-    ) {
-      return;
-    }
+    // Menciona só o conteúdo que existe (evita "apaga 0 colunas e 0 tarefas").
+    const content = [
+      columnsCount > 0 && plural(columnsCount, "coluna", "colunas"),
+      tasksCount > 0 && plural(tasksCount, "tarefa", "tarefas"),
+    ]
+      .filter(Boolean)
+      .join(" e ");
+
+    const confirmed = await confirmDialog({
+      title: `Excluir o quadro "${board.name}"?`,
+      text: content
+        ? `Isso também apaga ${content}. Esta ação não pode ser desfeita.`
+        : "Esta ação não pode ser desfeita.",
+      danger: true,
+    });
+
+    if (!confirmed) return;
 
     setSaving(true);
     setError("");

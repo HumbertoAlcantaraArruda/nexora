@@ -6,6 +6,7 @@ import type {
   TaskDragState,
 } from "../types/kanban";
 import { COLUMN_DRAG_TYPE, isColumnDrag } from "../dragTypes";
+import { confirmDialog } from "../confirmDialog";
 import TaskCard from "./TaskCard";
 
 interface KanbanColumnProps {
@@ -110,6 +111,23 @@ export default function KanbanColumn({
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteColumn() {
+    const taskCount = column.tasks.length;
+
+    const confirmed = await confirmDialog({
+      title: `Excluir a coluna "${column.name}"?`,
+      text:
+        taskCount > 0
+          ? `Isso também apaga ${taskCount} ${taskCount === 1 ? "tarefa" : "tarefas"}. Esta ação não pode ser desfeita.`
+          : "Esta ação não pode ser desfeita.",
+      danger: true,
+    });
+
+    if (confirmed) {
+      await onDeleteColumn(column.id);
     }
   }
 
@@ -333,15 +351,7 @@ export default function KanbanColumn({
               title="Excluir coluna"
               aria-label="Excluir coluna"
               disabled={busy}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Excluir a coluna "${column.name}" e suas tarefas?`,
-                  )
-                ) {
-                  void onDeleteColumn(column.id);
-                }
-              }}
+              onClick={() => void handleDeleteColumn()}
             >
               ×
             </button>

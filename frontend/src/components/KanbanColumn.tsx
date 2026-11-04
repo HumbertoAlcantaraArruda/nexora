@@ -19,7 +19,6 @@ interface KanbanColumnProps {
     },
   ) => Promise<boolean>;
   onDeleteTask: (id: number) => Promise<void>;
-  onMoveTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   onRenameColumn: (id: number, name: string) => Promise<boolean>;
   onDropTask: (
@@ -44,7 +43,6 @@ export default function KanbanColumn({
   busy,
   onCreateTask,
   onDeleteTask,
-  onMoveTask,
   onEditTask,
   onRenameColumn,
   onDropTask,
@@ -341,7 +339,6 @@ export default function KanbanColumn({
               task={task}
               disabled={busy}
               onDelete={(id) => void onDeleteTask(id)}
-              onMove={onMoveTask}
               onEdit={onEditTask}
             />
           </div>

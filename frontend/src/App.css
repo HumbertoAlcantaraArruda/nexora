@@ -280,7 +280,6 @@ button:disabled {
   font-size: 20px;
 }
 
-.move-button,
 .add-task-button {
   width: 100%;
   margin-top: 12px;
@@ -290,13 +289,7 @@ button:disabled {
   border: 1px dashed #cbd5e1;
 }
 
-.move-button {
-  border: none;
-  font-size: 12px;
-}
-
-.add-task-button:hover,
-.move-button:hover {
+.add-task-button:hover {
   background: #e2e8f0;
 }
 

@@ -56,9 +56,7 @@ export default function KanbanBoard() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [columnName, setColumnName] = useState("");
   const [showColumnForm, setShowColumnForm] = useState(false);
-  const [moveTask, setMoveTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [targetColumnId, setTargetColumnId] = useState("");
   const [dragState, setDragState] = useState<TaskDragState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -338,23 +336,6 @@ export default function KanbanBoard() {
     );
   }
 
-  async function handleMoveTask(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!moveTask || !targetColumnId) return;
-
-    await saveCrossColumnMove(
-      moveTask.id,
-      Number(targetColumnId),
-      "Não foi possível mover a tarefa.",
-    );
-
-    // Fecha o modal também em caso de falha: a mensagem de erro fica visível
-    // no quadro, que já foi ressincronizado com o servidor.
-    setMoveTask(null);
-    setTargetColumnId("");
-  }
-
   async function handleDropTask(taskId: number, destinationColumnId: number) {
     await saveCrossColumnMove(
       taskId,
@@ -539,7 +520,6 @@ export default function KanbanBoard() {
                 busy={saving}
                 onCreateTask={handleCreateTask}
                 onDeleteTask={handleDeleteTask}
-                onMoveTask={setMoveTask}
                 onEditTask={handleOpenEditTask}
                 onRenameColumn={handleRenameColumn}
                 onDropTask={handleDropTask}
@@ -572,50 +552,6 @@ export default function KanbanBoard() {
         />
       )}
 
-      {moveTask && (
-        <div className="modal-overlay">
-          <form className="move-modal" onSubmit={handleMoveTask}>
-            <h2>Mover tarefa</h2>
-            <p>{moveTask.title}</p>
-
-            <label>
-              Coluna de destino
-              <select
-                value={targetColumnId}
-                onChange={(event) => setTargetColumnId(event.target.value)}
-                required
-              >
-                <option value="">Selecione uma coluna</option>
-
-                {columns
-                  .filter(
-                    (column) => column.id !== moveTask.board_column_id,
-                  )
-                  .map((column) => (
-                    <option key={column.id} value={column.id}>
-                      {column.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-
-            <div className="form-actions">
-              <button type="submit" disabled={!targetColumnId || saving}>
-                {saving ? "Movendo..." : "Mover"}
-              </button>
-
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => setMoveTask(null)}
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </main>
   );
 }

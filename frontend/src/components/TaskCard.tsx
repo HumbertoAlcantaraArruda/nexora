@@ -4,7 +4,6 @@ interface TaskCardProps {
   task: Task;
   disabled?: boolean;
   onDelete: (id: number) => void;
-  onMove: (task: Task) => void;
   onEdit: (task: Task) => void;
 }
 
@@ -18,7 +17,6 @@ export default function TaskCard({
   task,
   disabled = false,
   onDelete,
-  onMove,
   onEdit,
 }: TaskCardProps) {
   return (
@@ -63,15 +61,6 @@ export default function TaskCard({
           {new Date(`${task.due_date}T12:00:00`).toLocaleDateString("pt-BR")}
         </small>
       )}
-
-      <button
-        type="button"
-        className="move-button"
-        disabled={disabled}
-        onClick={() => onMove(task)}
-      >
-        Mover para outra coluna
-      </button>
     </article>
   );
 }

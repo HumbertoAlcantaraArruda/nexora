@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AuthForm from "./components/AuthForm";
 import KanbanBoard from "./components/KanbanBoard";
+import { SESSION_EXPIRED_EVENT } from "./services/api";
 import {
   getAuthenticatedUser,
   logout,
@@ -30,6 +31,17 @@ export default function App() {
     }
 
     void checkSession();
+  }, []);
+
+  useEffect(() => {
+    function handleSessionExpired() {
+      setUser(null);
+    }
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+
+    return () =>
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, []);
 
   async function handleLogout() {

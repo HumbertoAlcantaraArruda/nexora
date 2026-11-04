@@ -9,6 +9,7 @@ import TaskCard from "./TaskCard";
 
 interface KanbanColumnProps {
   column: Column;
+  busy: boolean;
   onCreateTask: (
     columnId: number,
     data: {
@@ -16,7 +17,7 @@ interface KanbanColumnProps {
       description: string;
       priority: Task["priority"];
     },
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   onDeleteTask: (id: number) => Promise<void>;
   onMoveTask: (task: Task) => void;
   onDropTask: (
@@ -38,6 +39,7 @@ interface KanbanColumnProps {
 
 export default function KanbanColumn({
   column,
+  busy,
   onCreateTask,
   onDeleteTask,
   onMoveTask,
@@ -80,16 +82,20 @@ export default function KanbanColumn({
     setSaving(true);
 
     try {
-      await onCreateTask(column.id, {
+      const created = await onCreateTask(column.id, {
         title,
         description,
         priority,
       });
 
-      setTitle("");
-      setDescription("");
-      setPriority("medium");
-      setShowForm(false);
+      // Em caso de falha mantém o formulário preenchido para nova tentativa;
+      // a mensagem de erro é exibida pelo quadro.
+      if (created) {
+        setTitle("");
+        setDescription("");
+        setPriority("medium");
+        setShowForm(false);
+      }
     } finally {
       setSaving(false);
     }
@@ -188,6 +194,7 @@ export default function KanbanColumn({
           type="button"
           className="icon-button"
           title="Excluir coluna"
+          disabled={busy}
           onClick={() => {
             if (
               window.confirm(
@@ -227,12 +234,13 @@ export default function KanbanColumn({
             ]
               .filter(Boolean)
               .join(" ")}
-            draggable
+            draggable={!busy}
             onDragStart={(event) => handleDragStart(event, task.id)}
             onDragEnd={onTaskDragEnd}
           >
             <TaskCard
               task={task}
+              disabled={busy}
               onDelete={(id) => void onDeleteTask(id)}
               onMove={onMoveTask}
             />
@@ -275,7 +283,7 @@ export default function KanbanColumn({
           </select>
 
           <div className="form-actions">
-            <button type="submit" disabled={saving}>
+            <button type="submit" disabled={saving || busy}>
               {saving ? "Salvando..." : "Salvar tarefa"}
             </button>
 

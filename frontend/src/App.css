@@ -436,6 +436,17 @@ button:disabled {
   bottom: -7.5px;
 }
 
+/* Arraste bloqueado enquanto uma alteração está sendo salva. */
+.draggable-task[draggable="false"] {
+  cursor: wait;
+}
+
+.saving-indicator {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 13px;
+}
+
 .draggable-task:active {
   cursor: grabbing;
 }

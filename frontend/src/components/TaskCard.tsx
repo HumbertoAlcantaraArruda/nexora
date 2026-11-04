@@ -2,6 +2,7 @@ import type { Task } from "../types/kanban";
 
 interface TaskCardProps {
   task: Task;
+  disabled?: boolean;
   onDelete: (id: number) => void;
   onMove: (task: Task) => void;
 }
@@ -12,7 +13,12 @@ const priorityLabels: Record<Task["priority"], string> = {
   high: "Alta",
 };
 
-export default function TaskCard({ task, onDelete, onMove }: TaskCardProps) {
+export default function TaskCard({
+  task,
+  disabled = false,
+  onDelete,
+  onMove,
+}: TaskCardProps) {
   return (
     <article className="task-card">
       <div className="task-card-header">
@@ -24,6 +30,7 @@ export default function TaskCard({ task, onDelete, onMove }: TaskCardProps) {
           type="button"
           className="icon-button"
           title="Excluir tarefa"
+          disabled={disabled}
           onClick={() => onDelete(task.id)}
         >
           ×
@@ -44,6 +51,7 @@ export default function TaskCard({ task, onDelete, onMove }: TaskCardProps) {
       <button
         type="button"
         className="move-button"
+        disabled={disabled}
         onClick={() => onMove(task)}
       >
         Mover para outra coluna

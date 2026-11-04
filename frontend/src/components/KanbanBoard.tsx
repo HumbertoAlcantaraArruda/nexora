@@ -1,5 +1,5 @@
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type {
   KanbanBoard as Board,
   KanbanColumn as Column,
@@ -22,7 +22,30 @@ import {
   reorderTasks,
 } from "../services/taskService";
 
+import {
+  getApiErrorMessage,
+  isSessionExpiredError,
+} from "../services/apiErrors";
+
 import KanbanColumn from "./KanbanColumn";
+
+// Busca colunas e tarefas do quadro, ordenadas por position.
+async function fetchBoardColumns(boardId: number): Promise<Column[]> {
+  const [allColumns, allTasks] = await Promise.all([
+    getColumns(),
+    getTasks(),
+  ]);
+
+  return allColumns
+    .filter((column) => column.board_id === boardId)
+    .map((column) => ({
+      ...column,
+      tasks: allTasks
+        .filter((task) => task.board_column_id === column.id)
+        .sort((a, b) => a.position - b.position),
+    }))
+    .sort((a, b) => a.position - b.position);
+}
 
 export default function KanbanBoard() {
   const [boards, setBoards] = useState<Board[]>([]);
@@ -36,6 +59,12 @@ export default function KanbanBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Enquanto uma alteração é salva, outras ficam bloqueadas: evita requisições
+  // concorrentes sobre as mesmas tarefas e permite desfazer com segurança.
+  // O ref garante o bloqueio imediato; o state atualiza a interface.
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+
   useEffect(() => {
     async function loadBoards() {
       try {
@@ -46,8 +75,8 @@ export default function KanbanBoard() {
         if (result.length > 0) {
           setSelectedBoardId(result[0].id);
         }
-      } catch {
-        setError("Não foi possível carregar os quadros.");
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Não foi possível carregar os quadros."));
       } finally {
         setLoading(false);
       }
@@ -62,57 +91,86 @@ export default function KanbanBoard() {
       return;
     }
 
-    async function loadBoardContent() {
+    async function loadBoardContent(boardId: number) {
       try {
         setError("");
-
-        const [allColumns, allTasks] = await Promise.all([
-          getColumns(),
-          getTasks(),
-        ]);
-
-        setColumns(
-          allColumns
-            .filter((column) => column.board_id === selectedBoardId)
-            .map((column) => ({
-              ...column,
-              tasks: allTasks
-                .filter((task) => task.board_column_id === column.id)
-                .sort((a, b) => a.position - b.position),
-            }))
-            .sort((a, b) => a.position - b.position),
+        setColumns(await fetchBoardColumns(boardId));
+      } catch (err) {
+        setError(
+          getApiErrorMessage(err, "Não foi possível carregar as colunas e tarefas."),
         );
-      } catch {
-        setError("Não foi possível carregar as colunas e tarefas.");
       }
     }
 
-    void loadBoardContent();
+    void loadBoardContent(selectedBoardId);
   }, [selectedBoardId]);
+
+  // Recarrega o quadro do servidor para que a tela reflita o que foi persistido.
+  async function resyncBoard() {
+    if (selectedBoardId === null) return;
+
+    try {
+      setColumns(await fetchBoardColumns(selectedBoardId));
+    } catch {
+      setError((current) =>
+        `${current} Não foi possível recarregar o quadro; recarregue a página.`.trim(),
+      );
+    }
+  }
+
+  // Executa uma alteração na API com bloqueio, rollback e ressincronização.
+  // Retorna true somente após a API confirmar a operação.
+  async function runMutation(
+    fallbackMessage: string,
+    action: () => Promise<void>,
+    rollback?: () => void,
+  ): Promise<boolean> {
+    if (savingRef.current) return false;
+
+    savingRef.current = true;
+    setSaving(true);
+    setError("");
+
+    try {
+      await action();
+      return true;
+    } catch (err) {
+      rollback?.();
+      setError(getApiErrorMessage(err, fallbackMessage));
+
+      // Com a sessão expirada a aplicação volta ao login; não há o que recarregar.
+      if (!isSessionExpiredError(err)) {
+        await resyncBoard();
+      }
+
+      return false;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
 
   async function handleCreateColumn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (selectedBoardId === null) return;
 
-    try {
-      setError("");
+    const created = await runMutation(
+      "Não foi possível criar a coluna.",
+      async () => {
+        const column = await createColumn({
+          board_id: selectedBoardId,
+          name: columnName,
+          position: columns.length,
+        });
 
-      const column = await createColumn({
-        board_id: selectedBoardId,
-        name: columnName,
-        position: columns.length,
-      });
+        setColumns((current) => [...current, { ...column, tasks: [] }]);
+      },
+    );
 
-      setColumns((current) => [
-        ...current,
-        { ...column, tasks: [] },
-      ]);
-
+    if (created) {
       setColumnName("");
       setShowColumnForm(false);
-    } catch {
-      setError("Não foi possível criar a coluna.");
     }
   }
 
@@ -123,29 +181,29 @@ export default function KanbanBoard() {
       description: string;
       priority: Task["priority"];
     },
-  ) {
-    const task = await createTask({
-      board_column_id: columnId,
-      title: data.title,
-      description: data.description || null,
-      priority: data.priority,
-      position:
-        columns.find((column) => column.id === columnId)?.tasks.length ?? 0,
-    });
+  ): Promise<boolean> {
+    return runMutation("Não foi possível criar a tarefa.", async () => {
+      const task = await createTask({
+        board_column_id: columnId,
+        title: data.title,
+        description: data.description || null,
+        priority: data.priority,
+        position:
+          columns.find((column) => column.id === columnId)?.tasks.length ?? 0,
+      });
 
-    setColumns((current) =>
-      current.map((column) =>
-        column.id === columnId
-          ? { ...column, tasks: [...column.tasks, task] }
-          : column,
-      ),
-    );
+      setColumns((current) =>
+        current.map((column) =>
+          column.id === columnId
+            ? { ...column, tasks: [...column.tasks, task] }
+            : column,
+        ),
+      );
+    });
   }
 
   async function handleDeleteTask(taskId: number) {
-    try {
-      setError("");
-
+    await runMutation("Não foi possível excluir a tarefa.", async () => {
       await deleteTask(taskId);
 
       setColumns((current) =>
@@ -156,23 +214,86 @@ export default function KanbanBoard() {
             .map((task, position) => ({ ...task, position })),
         })),
       );
-    } catch {
-      setError("Não foi possível excluir a tarefa.");
-    }
+    });
   }
 
   async function handleDeleteColumn(columnId: number) {
-    try {
-      setError("");
-
+    await runMutation("Não foi possível excluir a coluna.", async () => {
       await deleteColumn(columnId);
 
       setColumns((current) =>
         current.filter((column) => column.id !== columnId),
       );
-    } catch {
-      setError("Não foi possível excluir a coluna.");
+    });
+  }
+
+  // Monta o novo estado de origem e destino ao levar uma tarefa para o fim
+  // de outra coluna, com posições sequenciais a partir de zero.
+  function buildCrossColumnMove(taskId: number, destinationId: number) {
+    const source = columns.find((column) =>
+      column.tasks.some((task) => task.id === taskId),
+    );
+    const destination = columns.find((column) => column.id === destinationId);
+    const task = source?.tasks.find((item) => item.id === taskId);
+
+    if (!source || !destination || !task || source.id === destinationId) {
+      return null;
     }
+
+    const sourceTasks = source.tasks
+      .filter((item) => item.id !== taskId)
+      .map((item, position) => ({ ...item, position }));
+
+    const destinationTasks = [
+      ...destination.tasks,
+      { ...task, board_column_id: destinationId },
+    ].map((item, position) => ({ ...item, position }));
+
+    return { source, destination, sourceTasks, destinationTasks };
+  }
+
+  async function saveCrossColumnMove(
+    taskId: number,
+    destinationId: number,
+    fallbackMessage: string,
+  ): Promise<boolean> {
+    const move = buildCrossColumnMove(taskId, destinationId);
+
+    if (!move) return false;
+
+    const snapshot = columns;
+
+    return runMutation(
+      fallbackMessage,
+      async () => {
+        // Atualiza a interface imediatamente; desfeito em caso de falha.
+        setColumns((current) =>
+          current.map((column) => {
+            if (column.id === move.source.id) {
+              return { ...column, tasks: move.sourceTasks };
+            }
+
+            if (column.id === destinationId) {
+              return { ...column, tasks: move.destinationTasks };
+            }
+
+            return column;
+          }),
+        );
+
+        await reorderTasks([
+          {
+            id: move.source.id,
+            task_ids: move.sourceTasks.map((item) => item.id),
+          },
+          {
+            id: destinationId,
+            task_ids: move.destinationTasks.map((item) => item.id),
+          },
+        ]);
+      },
+      () => setColumns(snapshot),
+    );
   }
 
   async function handleMoveTask(event: FormEvent<HTMLFormElement>) {
@@ -180,130 +301,24 @@ export default function KanbanBoard() {
 
     if (!moveTask || !targetColumnId) return;
 
-    const destinationId = Number(targetColumnId);
-    const destination = columns.find(
-      (column) => column.id === destinationId,
+    await saveCrossColumnMove(
+      moveTask.id,
+      Number(targetColumnId),
+      "Não foi possível mover a tarefa.",
     );
 
-    const source = columns.find((column) =>
-      column.tasks.some((task) => task.id === moveTask.id),
-    );
-
-    if (!destination || !source) return;
-
-    const sourceTasks = source.tasks
-      .filter((task) => task.id !== moveTask.id)
-      .map((task, position) => ({ ...task, position }));
-
-    const destinationTasks = [
-      ...destination.tasks,
-      { ...moveTask, board_column_id: destinationId },
-    ].map((task, position) => ({ ...task, position }));
-
-    try {
-      setError("");
-
-      await reorderTasks([
-        { id: source.id, task_ids: sourceTasks.map((task) => task.id) },
-        {
-          id: destinationId,
-          task_ids: destinationTasks.map((task) => task.id),
-        },
-      ]);
-
-      setColumns((current) =>
-        current.map((column) => {
-          if (column.id === source.id) {
-            return { ...column, tasks: sourceTasks };
-          }
-
-          if (column.id === destinationId) {
-            return { ...column, tasks: destinationTasks };
-          }
-
-          return column;
-        }),
-      );
-
-      setMoveTask(null);
-      setTargetColumnId("");
-    } catch {
-      setError("Não foi possível mover a tarefa.");
-    }
+    // Fecha o modal também em caso de falha: a mensagem de erro fica visível
+    // no quadro, que já foi ressincronizado com o servidor.
+    setMoveTask(null);
+    setTargetColumnId("");
   }
 
-  async function handleDropTask(
-    taskId: number,
-    destinationColumnId: number,
-  ) {
-    const sourceColumn = columns.find((column) =>
-      column.tasks.some((task) => task.id === taskId),
+  async function handleDropTask(taskId: number, destinationColumnId: number) {
+    await saveCrossColumnMove(
+      taskId,
+      destinationColumnId,
+      "Não foi possível salvar a movimentação.",
     );
-
-    const destinationColumn = columns.find(
-      (column) => column.id === destinationColumnId,
-    );
-
-    if (
-      !sourceColumn ||
-      !destinationColumn ||
-      sourceColumn.id === destinationColumnId
-    ) {
-      return;
-    }
-
-    const task = sourceColumn.tasks.find((item) => item.id === taskId);
-
-    if (!task) return;
-
-    const sourceTasks = sourceColumn.tasks
-      .filter((item) => item.id !== taskId)
-      .map((item, position) => ({ ...item, position }));
-
-    const movedTask: Task = {
-      ...task,
-      board_column_id: destinationColumnId,
-      position: destinationColumn.tasks.length,
-    };
-
-    const destinationTasks = [
-      ...destinationColumn.tasks,
-      movedTask,
-    ].map((item, position) => ({ ...item, position }));
-
-    // Atualiza a interface imediatamente.
-    setColumns((current) =>
-      current.map((column) => {
-        if (column.id === sourceColumn.id) {
-          return { ...column, tasks: sourceTasks };
-        }
-
-        if (column.id === destinationColumnId) {
-          return { ...column, tasks: destinationTasks };
-        }
-
-        return column;
-      }),
-    );
-
-    try {
-      setError("");
-
-      await reorderTasks([
-        {
-          id: sourceColumn.id,
-          task_ids: sourceTasks.map((item) => item.id),
-        },
-        {
-          id: destinationColumnId,
-          task_ids: destinationTasks.map((item) => item.id),
-        },
-      ]);
-    } catch {
-      setError(
-        "Não foi possível salvar a movimentação. Recarregue o quadro para sincronizar os dados.",
-      );
-    }
   }
 
   function handleTaskDragStart(taskId: number, sourceColumnId: number) {
@@ -357,8 +372,7 @@ export default function KanbanBoard() {
 
     if (toIndex === fromIndex) return;
 
-    const previousTasks = column.tasks;
-    const reordered = [...previousTasks];
+    const reordered = [...column.tasks];
     const [movedTask] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, movedTask);
 
@@ -367,28 +381,24 @@ export default function KanbanBoard() {
       position,
     }));
 
-    // Atualiza a interface imediatamente.
-    setColumns((current) =>
-      current.map((item) =>
-        item.id === columnId ? { ...item, tasks: reorderedTasks } : item,
-      ),
+    const snapshot = columns;
+
+    await runMutation(
+      "Não foi possível salvar a nova ordem das tarefas.",
+      async () => {
+        // Atualiza a interface imediatamente; desfeito em caso de falha.
+        setColumns((current) =>
+          current.map((item) =>
+            item.id === columnId ? { ...item, tasks: reorderedTasks } : item,
+          ),
+        );
+
+        await reorderTasks([
+          { id: columnId, task_ids: reorderedTasks.map((task) => task.id) },
+        ]);
+      },
+      () => setColumns(snapshot),
     );
-
-    try {
-      setError("");
-
-      await reorderTasks([
-        { id: columnId, task_ids: reorderedTasks.map((task) => task.id) },
-      ]);
-    } catch {
-      setColumns((current) =>
-        current.map((item) =>
-          item.id === columnId ? { ...item, tasks: previousTasks } : item,
-        ),
-      );
-
-      setError("Não foi possível salvar a nova ordem das tarefas.");
-    }
   }
 
   if (loading) {
@@ -411,6 +421,7 @@ export default function KanbanBoard() {
               onChange={(event) =>
                 setSelectedBoardId(Number(event.target.value))
               }
+              disabled={saving}
             >
               {boards.map((board) => (
                 <option key={board.id} value={board.id}>
@@ -422,7 +433,11 @@ export default function KanbanBoard() {
         )}
       </header>
 
-      {error && <p className="auth-error">{error}</p>}
+      {error && (
+        <p className="auth-error" role="alert">
+          {error}
+        </p>
+      )}
 
       {boards.length === 0 ? (
         <p>Você ainda não tem quadros. Crie um quadro para começar.</p>
@@ -432,6 +447,12 @@ export default function KanbanBoard() {
             <h2>
               {boards.find((board) => board.id === selectedBoardId)?.name}
             </h2>
+
+            {saving && (
+              <span className="saving-indicator" role="status">
+                Salvando...
+              </span>
+            )}
 
             <button
               type="button"
@@ -454,7 +475,9 @@ export default function KanbanBoard() {
                 required
               />
 
-              <button type="submit">Criar coluna</button>
+              <button type="submit" disabled={saving}>
+                Criar coluna
+              </button>
 
               <button
                 type="button"
@@ -471,17 +494,18 @@ export default function KanbanBoard() {
               <KanbanColumn
                 key={column.id}
                 column={column}
+                busy={saving}
                 onCreateTask={handleCreateTask}
                 onDeleteTask={handleDeleteTask}
                 onMoveTask={setMoveTask}
                 onDropTask={handleDropTask}
                 onReorderTask={handleReorderTask}
+                onDeleteColumn={handleDeleteColumn}
                 dragState={dragState}
                 onTaskDragStart={handleTaskDragStart}
                 onTaskDragOver={handleTaskDragOver}
                 onTaskDragLeave={handleTaskDragLeave}
                 onTaskDragEnd={handleTaskDragEnd}
-                onDeleteColumn={handleDeleteColumn}
               />
             ))}
 
@@ -522,14 +546,15 @@ export default function KanbanBoard() {
             </label>
 
             <div className="form-actions">
-              <button type="submit" disabled={!targetColumnId}>
-                Mover
+              <button type="submit" disabled={!targetColumnId || saving}>
+                {saving ? "Movendo..." : "Mover"}
               </button>
 
               <button
                 type="button"
                 className="secondary-button"
                 onClick={() => setMoveTask(null)}
+                disabled={saving}
               >
                 Cancelar
               </button>

@@ -303,6 +303,63 @@ export default function KanbanBoard() {
     }
   }
 
+  async function handleReorderTask(
+    taskId: number,
+    columnId: number,
+    insertIndex: number,
+  ) {
+    const column = columns.find((item) => item.id === columnId);
+
+    if (!column) return;
+
+    const fromIndex = column.tasks.findIndex((task) => task.id === taskId);
+
+    if (fromIndex === -1) return;
+
+    // insertIndex é a posição entre os cartões atuais (0..n); ao remover a
+    // tarefa da posição de origem, os índices posteriores recuam uma casa.
+    const toIndex = insertIndex > fromIndex ? insertIndex - 1 : insertIndex;
+
+    if (toIndex === fromIndex) return;
+
+    const previousTasks = column.tasks;
+    const reordered = [...previousTasks];
+    const [movedTask] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, movedTask);
+
+    const reorderedTasks = reordered.map((task, position) => ({
+      ...task,
+      position,
+    }));
+
+    // Atualiza a interface imediatamente.
+    setColumns((current) =>
+      current.map((item) =>
+        item.id === columnId ? { ...item, tasks: reorderedTasks } : item,
+      ),
+    );
+
+    try {
+      setError("");
+
+      // Envia todas as posições da coluna: o estado local pode estar
+      // renumerado (ex.: após exclusões) sem que o banco tenha sido atualizado.
+      await Promise.all(
+        reorderedTasks.map((task) =>
+          updateTask(task.id, { position: task.position }),
+        ),
+      );
+    } catch {
+      setColumns((current) =>
+        current.map((item) =>
+          item.id === columnId ? { ...item, tasks: previousTasks } : item,
+        ),
+      );
+
+      setError("Não foi possível salvar a nova ordem das tarefas.");
+    }
+  }
+
   if (loading) {
     return <p className="loading-screen">Carregando quadros...</p>;
   }
@@ -387,6 +444,7 @@ export default function KanbanBoard() {
                 onDeleteTask={handleDeleteTask}
                 onMoveTask={setMoveTask}
                 onDropTask={handleDropTask}
+                onReorderTask={handleReorderTask}
                 onDeleteColumn={handleDeleteColumn}
               />
             ))}

@@ -19,6 +19,11 @@ interface KanbanColumnProps {
     taskId: number,
     destinationColumnId: number,
   ) => Promise<void>;
+  onReorderTask: (
+    taskId: number,
+    columnId: number,
+    insertIndex: number,
+  ) => Promise<void>;
   onDeleteColumn: (id: number) => Promise<void>;
 }
 
@@ -28,6 +33,7 @@ export default function KanbanColumn({
   onDeleteTask,
   onMoveTask,
   onDropTask,
+  onReorderTask,
   onDeleteColumn,
 }: KanbanColumnProps) {
   const [title, setTitle] = useState("");
@@ -99,10 +105,30 @@ export default function KanbanColumn({
     );
 
     if (taskAlreadyHere) {
+      await onReorderTask(
+        taskId,
+        column.id,
+        getInsertIndex(event.currentTarget, event.clientY),
+      );
       return;
     }
 
     await onDropTask(taskId, column.id);
+  }
+
+  // Retorna a posição (0..n) entre os cartões onde o item foi solto,
+  // comparando o cursor com o ponto médio vertical de cada cartão.
+  function getInsertIndex(list: HTMLElement, clientY: number) {
+    const cards = Array.from(
+      list.querySelectorAll<HTMLElement>(":scope > .draggable-task"),
+    );
+
+    const index = cards.findIndex((card) => {
+      const rect = card.getBoundingClientRect();
+      return clientY < rect.top + rect.height / 2;
+    });
+
+    return index === -1 ? cards.length : index;
   }
 
   return (

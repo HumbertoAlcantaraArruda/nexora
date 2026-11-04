@@ -4,10 +4,12 @@ import BoardFormModal, { type BoardFormData } from "./components/BoardFormModal"
 import BoardList from "./components/BoardList";
 import KanbanBoard from "./components/KanbanBoard";
 import SettingsPage from "./components/SettingsPage";
+import ShareBoardModal from "./components/ShareBoardModal";
 import Sidebar from "./components/Sidebar";
 import { confirmDialog } from "./confirmDialog";
 import { SESSION_EXPIRED_EVENT } from "./services/api";
 import { getApiErrorMessage } from "./services/apiErrors";
+import { removeMember } from "./services/memberService";
 import {
   getAuthenticatedUser,
   logout,
@@ -53,6 +55,7 @@ export default function App() {
   const [boardBusy, setBoardBusy] = useState(false);
   const [boardModal, setBoardModal] = useState<BoardModalState>(null);
   const [boardModalError, setBoardModalError] = useState("");
+  const [shareBoard, setShareBoard] = useState<Board | null>(null);
   const boardsLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -261,6 +264,35 @@ export default function App() {
     }
   }
 
+  // Quem recebeu um quadro compartilhado pode deixar de vê-lo.
+  async function handleLeaveBoard(board: Board) {
+    if (!user) return;
+
+    const confirmed = await confirmDialog({
+      title: `Sair do quadro "${board.name}"?`,
+      text: `Você deixará de ver este quadro. ${board.owner.name} pode compartilhá-lo de novo.`,
+      danger: true,
+    });
+
+    if (!confirmed) return;
+
+    setBoardBusy(true);
+    setBoardsError("");
+
+    try {
+      await removeMember(board.id, user.id);
+      setBoards((current) => current.filter((item) => item.id !== board.id));
+
+      if (boardId === board.id) goToBoardList();
+    } catch (err) {
+      setBoardsError(getApiErrorMessage(err, "Não foi possível sair do quadro."));
+      if (boardId === board.id) goToBoardList();
+      await loadBoards();
+    } finally {
+      setBoardBusy(false);
+    }
+  }
+
   async function handleDeleteBoard(board: Board) {
     const columnsCount = board.columns_count ?? 0;
     const tasksCount = board.tasks_count ?? 0;
@@ -345,7 +377,9 @@ export default function App() {
             onOpenBoard={goToBoard}
             onCreateBoard={() => openBoardModal({ mode: "create" })}
             onEditBoard={(board) => openBoardModal({ mode: "edit", board })}
+            onShareBoard={setShareBoard}
             onDeleteBoard={(board) => void handleDeleteBoard(board)}
+            onLeaveBoard={(board) => void handleLeaveBoard(board)}
           />
         ) : (
           <KanbanBoard
@@ -354,7 +388,9 @@ export default function App() {
             board={boards.find((board) => board.id === boardId)}
             onGoHome={goToBoardList}
             onEditBoard={(board) => openBoardModal({ mode: "edit", board })}
+            onShareBoard={setShareBoard}
             onDeleteBoard={(board) => void handleDeleteBoard(board)}
+            onLeaveBoard={(board) => void handleLeaveBoard(board)}
           />
         )}
       </main>
@@ -367,6 +403,10 @@ export default function App() {
           onSave={handleSaveBoard}
           onCancel={() => setBoardModal(null)}
         />
+      )}
+
+      {shareBoard && (
+        <ShareBoardModal board={shareBoard} onClose={() => setShareBoard(null)} />
       )}
     </div>
   );

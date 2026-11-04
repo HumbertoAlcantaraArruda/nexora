@@ -2,6 +2,15 @@
 import { api } from './api';
 import type { KanbanColumn } from '../types/kanban';
 
+// Permissão de quem está vendo o quadro: dono, pode editar ou só visualizar.
+export type BoardPermission = 'owner' | 'editor' | 'viewer';
+
+export interface BoardOwner {
+  id: number;
+  name: string;
+  avatar_url: string | null;
+}
+
 export interface Board {
   id: number;
   user_id: number;
@@ -9,6 +18,8 @@ export interface Board {
   description: string | null;
   created_at: string;
   updated_at: string;
+  permission: BoardPermission;
+  owner: BoardOwner;
   // Presentes na listagem (GET /boards).
   columns_count?: number;
   tasks_count?: number;
@@ -68,4 +79,9 @@ export async function updateBoard(
 
 export async function deleteBoard(id: number): Promise<void> {
   await api.delete(`/boards/${id}`);
+}
+
+// Pode criar, editar, mover e excluir colunas e tarefas.
+export function canEditBoard(board: Pick<Board, 'permission'>): boolean {
+  return board.permission === 'owner' || board.permission === 'editor';
 }

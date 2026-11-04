@@ -16,7 +16,9 @@ export type IconName =
   | "x"
   | "calendar"
   | "grid"
-  | "check";
+  | "check"
+  | "users"
+  | "user-plus";
 
 const paths: Record<IconName, string[]> = {
   pencil: ["M12 20h9", "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"],
@@ -30,6 +32,18 @@ const paths: Record<IconName, string[]> = {
   "arrow-right": ["M5 12h14", "M13 6l6 6-6 6"],
   plus: ["M12 5v14", "M5 12h14"],
   check: ["M20 6 9 17l-5-5"],
+  users: [
+    "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
+    "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+    "M22 21v-2a4 4 0 0 0-3-3.87",
+    "M16 3.13a4 4 0 0 1 0 7.75",
+  ],
+  "user-plus": [
+    "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2",
+    "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+    "M19 8v6",
+    "M22 11h-6",
+  ],
   board: [
     "M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z",
     "M9 3v18",

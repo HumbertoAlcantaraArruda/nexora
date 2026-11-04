@@ -15,7 +15,7 @@ import type {
 } from "../types/kanban";
 import { isColumnDrag } from "../dragTypes";
 
-import { getBoard, type Board } from "../services/boardService";
+import { canEditBoard, getBoard, type Board } from "../services/boardService";
 
 import {
   createColumn,
@@ -41,6 +41,7 @@ import { columnColor, defaultColumnColor } from "../columnColors";
 import ColumnFormModal, { type ColumnFormData } from "./ColumnFormModal";
 import Icon from "./Icon";
 import KanbanColumn from "./KanbanColumn";
+import OwnerTag from "./OwnerTag";
 import TaskFormModal, { type TaskFormData } from "./TaskFormModal";
 import TopBar from "./TopBar";
 
@@ -69,7 +70,9 @@ interface KanbanBoardProps {
   board?: Board;
   onGoHome: () => void;
   onEditBoard: (board: Board) => void;
+  onShareBoard: (board: Board) => void;
   onDeleteBoard: (board: Board) => void;
+  onLeaveBoard: (board: Board) => void;
 }
 
 type TaskModalState =
@@ -87,7 +90,9 @@ export default function KanbanBoard({
   board: boardFromList,
   onGoHome,
   onEditBoard,
+  onShareBoard,
   onDeleteBoard,
+  onLeaveBoard,
 }: KanbanBoardProps) {
   const [fetchedBoard, setBoard] = useState<Board | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -101,6 +106,11 @@ export default function KanbanBoard({
 
   // Prefere os dados da lista do App, que refletem edições feitas no modal.
   const board = boardFromList ?? fetchedBoard;
+
+  // Dono e quem pode editar alteram colunas e tarefas; quem só visualiza
+  // vê o quadro sem botões de criar, arrastar, editar ou excluir.
+  const isOwner = board?.permission === "owner";
+  const canEdit = board ? canEditBoard(board) : false;
 
   // Enquanto uma alteração é salva, outras ficam bloqueadas: evita requisições
   // concorrentes sobre as mesmas tarefas e permite desfazer com segurança.
@@ -699,32 +709,66 @@ export default function KanbanBoard({
               </span>
             )}
 
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => openTaskModal({ mode: "create" })}
-              disabled={saving || columns.length === 0}
-              title={
-                columns.length === 0
-                  ? "Crie uma coluna antes de adicionar tarefas"
-                  : undefined
-              }
-            >
-              <Icon name="plus" size={16} />
-              <span className="hide-on-mobile">Nova tarefa</span>
-            </button>
+            {!isOwner && (
+              <span className="topbar-owner hide-on-mobile">
+                <OwnerTag owner={board.owner} />
+              </span>
+            )}
+
+            {!canEdit && (
+              <span
+                className="role-badge role-badge-viewer"
+                title="Você só pode visualizar este quadro"
+              >
+                Somente leitura
+              </span>
+            )}
+
+            {canEdit && (
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => openTaskModal({ mode: "create" })}
+                disabled={saving || columns.length === 0}
+                title={
+                  columns.length === 0
+                    ? "Crie uma coluna antes de adicionar tarefas"
+                    : undefined
+                }
+              >
+                <Icon name="plus" size={16} />
+                <span className="hide-on-mobile">Nova tarefa</span>
+              </button>
+            )}
 
             <ActionMenu
               label="Ações do quadro"
               disabled={saving}
-              items={[
-                { label: "Editar quadro", onSelect: () => onEditBoard(board) },
-                {
-                  label: "Excluir quadro",
-                  danger: true,
-                  onSelect: () => onDeleteBoard(board),
-                },
-              ]}
+              items={
+                isOwner
+                  ? [
+                      {
+                        label: "Compartilhar",
+                        onSelect: () => onShareBoard(board),
+                      },
+                      {
+                        label: "Editar quadro",
+                        onSelect: () => onEditBoard(board),
+                      },
+                      {
+                        label: "Excluir quadro",
+                        danger: true,
+                        onSelect: () => onDeleteBoard(board),
+                      },
+                    ]
+                  : [
+                      {
+                        label: "Sair do quadro",
+                        danger: true,
+                        onSelect: () => onLeaveBoard(board),
+                      },
+                    ]
+              }
             />
           </>
         }
@@ -742,19 +786,25 @@ export default function KanbanBoard({
           <div className="empty-state">
             <Icon name="board" size={40} />
             <h2>Este quadro ainda não tem colunas</h2>
-            <p>
-              Crie colunas como "A fazer", "Em andamento" e "Concluído" para
-              organizar suas tarefas.
-            </p>
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => openColumnModal({ mode: "create" })}
-              disabled={saving}
-            >
-              <Icon name="plus" size={16} />
-              Nova coluna
-            </button>
+            {canEdit ? (
+              <>
+                <p>
+                  Crie colunas como "A fazer", "Em andamento" e "Concluído"
+                  para organizar suas tarefas.
+                </p>
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => openColumnModal({ mode: "create" })}
+                  disabled={saving}
+                >
+                  <Icon name="plus" size={16} />
+                  Nova coluna
+                </button>
+              </>
+            ) : (
+              <p>Quando as colunas forem criadas, elas aparecerão aqui.</p>
+            )}
           </div>
         </div>
       ) : (
@@ -771,6 +821,7 @@ export default function KanbanBoard({
                 column={column}
                 color={columnColor(column, index)}
                 busy={saving}
+                readOnly={!canEdit}
                 onOpenTask={(task) => openTaskModal({ mode: "edit", task })}
                 onEditColumn={(item) =>
                   openColumnModal({ mode: "edit", column: item })
@@ -792,15 +843,17 @@ export default function KanbanBoard({
 
           {columnDropIndex === columns.length && columnDropIndicator}
 
-          <button
-            type="button"
-            className="new-column"
-            onClick={() => openColumnModal({ mode: "create" })}
-            disabled={saving}
-          >
-            <Icon name="plus" size={16} />
-            Nova coluna
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              className="new-column"
+              onClick={() => openColumnModal({ mode: "create" })}
+              disabled={saving}
+            >
+              <Icon name="plus" size={16} />
+              Nova coluna
+            </button>
+          )}
         </div>
       )}
 
@@ -815,11 +868,12 @@ export default function KanbanBoard({
           error={error}
           onSave={handleSaveTask}
           onDelete={
-            taskModal.mode === "edit"
+            taskModal.mode === "edit" && canEdit
               ? () => handleDeleteTask(taskModal.task.id)
               : undefined
           }
           onCancel={() => setTaskModal(null)}
+          readOnly={!canEdit}
         />
       )}
 

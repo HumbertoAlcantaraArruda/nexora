@@ -40,6 +40,37 @@ const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
   ref,
 ) {
   const homeActive = activeBoardId === null && !settingsActive;
+  const ownBoards = boards.filter((board) => board.permission === "owner");
+  const sharedBoards = boards.filter((board) => board.permission !== "owner");
+
+  function renderBoardItem(board: Board) {
+    const active = board.id === activeBoardId;
+    const shared = board.permission !== "owner";
+
+    return (
+      <li key={board.id}>
+        <button
+          type="button"
+          className={`sidebar-item${active ? " sidebar-item-active" : ""}`}
+          onClick={() => onOpenBoard(board.id)}
+          aria-current={active ? "page" : undefined}
+          title={shared ? `${board.name} (de ${board.owner.name})` : board.name}
+        >
+          <span className="sidebar-item-icon">
+            <span className="board-badge" aria-hidden="true">
+              {initials(board.name) || "?"}
+            </span>
+          </span>
+          <span className="sidebar-item-label">{board.name}</span>
+          {shared && (
+            <span className="sidebar-item-owner" aria-hidden="true">
+              <Avatar user={board.owner} size={20} />
+            </span>
+          )}
+        </button>
+      </li>
+    );
+  }
   // Recolhida, um clique na barra fora dos botões também a expande.
   function handleClick(event: MouseEvent<HTMLElement>) {
     if (!expanded && !(event.target as Element).closest("button, a")) {
@@ -94,33 +125,10 @@ const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
         </button>
 
         <p className="sidebar-section-title">
-          <span>Todos os quadros ({boards.length})</span>
+          <span>Seus quadros ({ownBoards.length})</span>
         </p>
 
-        <ul className="sidebar-boards">
-          {boards.map((board) => {
-            const active = board.id === activeBoardId;
-
-            return (
-              <li key={board.id}>
-                <button
-                  type="button"
-                  className={`sidebar-item${active ? " sidebar-item-active" : ""}`}
-                  onClick={() => onOpenBoard(board.id)}
-                  aria-current={active ? "page" : undefined}
-                  title={board.name}
-                >
-                  <span className="sidebar-item-icon">
-                    <span className="board-badge" aria-hidden="true">
-                      {initials(board.name) || "?"}
-                    </span>
-                  </span>
-                  <span className="sidebar-item-label">{board.name}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <ul className="sidebar-boards">{ownBoards.map(renderBoardItem)}</ul>
 
         <button
           type="button"
@@ -133,6 +141,18 @@ const Sidebar = forwardRef<HTMLElement, SidebarProps>(function Sidebar(
           </span>
           <span className="sidebar-item-label">Criar novo quadro</span>
         </button>
+
+        {sharedBoards.length > 0 && (
+          <>
+            <p className="sidebar-section-title">
+              <span>Compartilhados comigo ({sharedBoards.length})</span>
+            </p>
+
+            <ul className="sidebar-boards">
+              {sharedBoards.map(renderBoardItem)}
+            </ul>
+          </>
+        )}
       </nav>
 
       <div className="sidebar-footer">

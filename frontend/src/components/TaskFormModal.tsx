@@ -20,6 +20,8 @@ interface TaskFormModalProps {
   onSave: (data: TaskFormData, columnId: number) => Promise<boolean>;
   onDelete?: () => Promise<boolean>;
   onCancel: () => void;
+  // Quadro compartilhado só para visualizar: campos travados, sem salvar.
+  readOnly?: boolean;
 }
 
 const TITLE_MAX = 255;
@@ -46,6 +48,7 @@ export default function TaskFormModal({
   onSave,
   onDelete,
   onCancel,
+  readOnly = false,
 }: TaskFormModalProps) {
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
@@ -96,7 +99,9 @@ export default function TaskFormModal({
 
   return (
     <Modal
-      title={task ? "Editar tarefa" : "Nova tarefa"}
+      title={
+        readOnly ? "Detalhes da tarefa" : task ? "Editar tarefa" : "Nova tarefa"
+      }
       onClose={onCancel}
       closeDisabled={saving}
     >
@@ -105,73 +110,75 @@ export default function TaskFormModal({
         onSubmit={(event) => void handleSubmit(event)}
         noValidate
       >
-        <label className="form-field">
-          Título
-          <input
-            value={title}
-            onChange={(event) => {
-              setTitle(event.target.value);
-              setValidationError("");
-            }}
-            placeholder="Ex.: Revisar layout da página inicial"
-            maxLength={TITLE_MAX}
-            required
-            autoFocus
-          />
-        </label>
-
-        <label className="form-field">
-          Descrição
-          <textarea
-            value={description}
-            onChange={(event) => {
-              setDescription(event.target.value);
-              setValidationError("");
-            }}
-            placeholder="Opcional"
-            maxLength={DESCRIPTION_MAX}
-            rows={4}
-          />
-        </label>
-
-        <div className="form-row">
+        <fieldset className="form-fieldset" disabled={readOnly}>
           <label className="form-field">
-            Prioridade
-            <select
-              value={priority}
-              onChange={(event) =>
-                setPriority(event.target.value as Task["priority"])
-              }
-            >
-              <option value="low">Baixa</option>
-              <option value="medium">Média</option>
-              <option value="high">Alta</option>
-            </select>
-          </label>
-
-          <label className="form-field">
-            Vencimento
+            Título
             <input
-              type="date"
-              value={dueDate}
-              onChange={(event) => setDueDate(event.target.value)}
+              value={title}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                setValidationError("");
+              }}
+              placeholder="Ex.: Revisar layout da página inicial"
+              maxLength={TITLE_MAX}
+              required
+              autoFocus={!readOnly}
             />
           </label>
-        </div>
 
-        <label className="form-field">
-          Coluna
-          <select
-            value={columnId}
-            onChange={(event) => setColumnId(Number(event.target.value))}
-          >
-            {columns.map((column) => (
-              <option key={column.id} value={column.id}>
-                {column.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="form-field">
+            Descrição
+            <textarea
+              value={description}
+              onChange={(event) => {
+                setDescription(event.target.value);
+                setValidationError("");
+              }}
+              placeholder={readOnly ? "Sem descrição" : "Opcional"}
+              maxLength={DESCRIPTION_MAX}
+              rows={4}
+            />
+          </label>
+
+          <div className="form-row">
+            <label className="form-field">
+              Prioridade
+              <select
+                value={priority}
+                onChange={(event) =>
+                  setPriority(event.target.value as Task["priority"])
+                }
+              >
+                <option value="low">Baixa</option>
+                <option value="medium">Média</option>
+                <option value="high">Alta</option>
+              </select>
+            </label>
+
+            <label className="form-field">
+              Vencimento
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(event) => setDueDate(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <label className="form-field">
+            Coluna
+            <select
+              value={columnId}
+              onChange={(event) => setColumnId(Number(event.target.value))}
+            >
+              {columns.map((column) => (
+                <option key={column.id} value={column.id}>
+                  {column.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
 
         {visibleError && (
           <p className="form-error" role="alert">
@@ -179,30 +186,45 @@ export default function TaskFormModal({
           </p>
         )}
 
-        <div className="modal-actions">
-          {task && onDelete && (
+        {readOnly ? (
+          <div className="modal-actions">
+            <p className="read-only-note">
+              Você tem acesso somente para visualizar este quadro.
+            </p>
             <button
               type="button"
-              className="button button-danger-ghost"
-              onClick={() => void handleDelete()}
+              className="button button-secondary"
+              onClick={onCancel}
+            >
+              Fechar
+            </button>
+          </div>
+        ) : (
+          <div className="modal-actions">
+            {task && onDelete && (
+              <button
+                type="button"
+                className="button button-danger-ghost"
+                onClick={() => void handleDelete()}
+                disabled={saving}
+              >
+                Excluir tarefa
+              </button>
+            )}
+
+            <button
+              type="submit"
+              className="button button-primary"
               disabled={saving}
             >
-              Excluir tarefa
+              {saving
+                ? "Salvando..."
+                : task
+                  ? "Salvar alterações"
+                  : "Criar tarefa"}
             </button>
-          )}
-
-          <button
-            type="submit"
-            className="button button-primary"
-            disabled={saving}
-          >
-            {saving
-              ? "Salvando..."
-              : task
-                ? "Salvar alterações"
-                : "Criar tarefa"}
-          </button>
-        </div>
+          </div>
+        )}
       </form>
     </Modal>
   );

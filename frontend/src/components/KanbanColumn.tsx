@@ -15,6 +15,8 @@ interface KanbanColumnProps {
   // Cor da bolinha do cabeçalho (varia por posição da coluna).
   color: string;
   busy: boolean;
+  // Quadro compartilhado só para visualizar: sem arrastar, editar ou excluir.
+  readOnly: boolean;
   onOpenTask: (task: Task) => void;
   onEditColumn: (column: Column) => void;
   onDropTask: (
@@ -41,6 +43,7 @@ export default function KanbanColumn({
   column,
   color,
   busy,
+  readOnly,
   onOpenTask,
   onEditColumn,
   onDropTask,
@@ -205,10 +208,10 @@ export default function KanbanColumn({
     >
       <header
         className="column-header"
-        draggable={!busy}
-        onDragStart={handleColumnDragStart}
-        onDragEnd={onColumnDragEnd}
-        title="Arraste para reordenar a coluna"
+        draggable={readOnly ? undefined : !busy}
+        onDragStart={readOnly ? undefined : handleColumnDragStart}
+        onDragEnd={readOnly ? undefined : onColumnDragEnd}
+        title={readOnly ? undefined : "Arraste para reordenar a coluna"}
       >
         <h2>
           <span className="column-dot" aria-hidden="true" />
@@ -216,29 +219,31 @@ export default function KanbanColumn({
           <span className="column-count">({column.tasks.length})</span>
         </h2>
 
-        <div className="column-actions">
-          <button
-            type="button"
-            className="icon-button"
-            title="Editar coluna"
-            aria-label={`Editar a coluna ${column.name}`}
-            disabled={busy}
-            onClick={() => onEditColumn(column)}
-          >
-            <Icon name="pencil" size={15} />
-          </button>
+        {!readOnly && (
+          <div className="column-actions">
+            <button
+              type="button"
+              className="icon-button"
+              title="Editar coluna"
+              aria-label={`Editar a coluna ${column.name}`}
+              disabled={busy}
+              onClick={() => onEditColumn(column)}
+            >
+              <Icon name="pencil" size={15} />
+            </button>
 
-          <button
-            type="button"
-            className="icon-button icon-button-danger"
-            title="Excluir coluna"
-            aria-label={`Excluir a coluna ${column.name}`}
-            disabled={busy}
-            onClick={() => void handleDeleteColumn()}
-          >
-            <Icon name="trash" size={15} />
-          </button>
-        </div>
+            <button
+              type="button"
+              className="icon-button icon-button-danger"
+              title="Excluir coluna"
+              aria-label={`Excluir a coluna ${column.name}`}
+              disabled={busy}
+              onClick={() => void handleDeleteColumn()}
+            >
+              <Icon name="trash" size={15} />
+            </button>
+          </div>
+        )}
       </header>
 
       <div
@@ -249,9 +254,9 @@ export default function KanbanColumn({
         ]
           .filter(Boolean)
           .join(" ")}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={(event) => void handleDrop(event)}
+        onDragOver={readOnly ? undefined : handleDragOver}
+        onDragLeave={readOnly ? undefined : handleDragLeave}
+        onDrop={readOnly ? undefined : (event) => void handleDrop(event)}
       >
         {column.tasks.map((task, index) => (
           <div
@@ -266,16 +271,20 @@ export default function KanbanColumn({
             ]
               .filter(Boolean)
               .join(" ")}
-            draggable={!busy}
-            onDragStart={(event) => handleDragStart(event, task.id)}
-            onDragEnd={onTaskDragEnd}
+            draggable={readOnly ? undefined : !busy}
+            onDragStart={
+              readOnly ? undefined : (event) => handleDragStart(event, task.id)
+            }
+            onDragEnd={readOnly ? undefined : onTaskDragEnd}
           >
             <TaskCard task={task} onOpen={onOpenTask} />
           </div>
         ))}
 
         {column.tasks.length === 0 && (
-          <p className="empty-column">Arraste tarefas para cá</p>
+          <p className="empty-column">
+            {readOnly ? "Nenhuma tarefa" : "Arraste tarefas para cá"}
+          </p>
         )}
       </div>
     </section>

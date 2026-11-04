@@ -17,10 +17,10 @@
   flex-direction: column;
   gap: 18px;
   padding: 32px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 12px 36px rgb(15 23 42 / 8%);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-elevated);
 }
 
 .auth-card h1,
@@ -40,8 +40,10 @@
 input {
   width: 100%;
   padding: 11px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-input-border);
   border-radius: 8px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
   font: inherit;
 }
 
@@ -49,8 +51,8 @@ button {
   padding: 11px 16px;
   border: 0;
   border-radius: 8px;
-  background: #4f46e5;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
   font: inherit;
   cursor: pointer;
 }
@@ -62,11 +64,11 @@ button:disabled {
 
 .auth-switch {
   background: transparent;
-  color: #4f46e5;
+  color: var(--color-primary-text);
 }
 
 .auth-error {
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .board-container {
@@ -86,9 +88,9 @@ button:disabled {
 .board-create {
   margin-bottom: 40px;
   padding: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: white;
+  background: var(--color-surface);
 }
 
 .board-create form {
@@ -106,13 +108,13 @@ button:disabled {
 
 .board-card {
   padding: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: white;
+  background: var(--color-surface);
 }
 
 .board-card p {
-  color: #64748b;
+  color: var(--color-text-muted);
   overflow-wrap: anywhere;
 }
 
@@ -133,8 +135,24 @@ button:disabled {
   align-items: center;
   gap: 16px;
   padding: 12px 32px;
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.theme-toggle:hover {
+  background: var(--color-hover);
 }
 
 .kanban-page {
@@ -156,7 +174,7 @@ button:disabled {
 }
 
 .kanban-page-header p {
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .board-selector {
@@ -171,9 +189,10 @@ button:disabled {
 .move-modal select,
 .edit-modal select {
   padding: 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-input-border);
   border-radius: 8px;
-  background: white;
+  background: var(--color-input-bg);
+  color: var(--color-text);
 }
 
 .kanban-columns {
@@ -190,9 +209,9 @@ button:disabled {
   max-height: calc(100vh - 250px);
   overflow-y: auto;
   padding: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
-  background: #eef2f7;
+  background: var(--color-surface-muted);
 }
 
 .column-header {
@@ -209,7 +228,7 @@ button:disabled {
 }
 
 .task-count {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
@@ -221,10 +240,10 @@ button:disabled {
 
 .task-card {
   padding: 15px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: white;
-  box-shadow: 0 2px 5px rgb(15 23 42 / 4%);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .task-card h3 {
@@ -233,7 +252,7 @@ button:disabled {
 }
 
 .task-card p {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 13px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -242,7 +261,7 @@ button:disabled {
 .task-card small {
   display: block;
   margin-top: 10px;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .task-card-header {
@@ -259,24 +278,24 @@ button:disabled {
 }
 
 .priority-low {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-priority-low-bg);
+  color: var(--color-priority-low-text);
 }
 
 .priority-medium {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-priority-medium-bg);
+  color: var(--color-priority-medium-text);
 }
 
 .priority-high {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-priority-high-bg);
+  color: var(--color-priority-high-text);
 }
 
 .icon-button {
   padding: 3px 8px;
   background: transparent;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 20px;
 }
 
@@ -285,17 +304,17 @@ button:disabled {
   margin-top: 12px;
   padding: 9px;
   background: transparent;
-  color: #475569;
-  border: 1px dashed #cbd5e1;
+  color: var(--color-text-secondary);
+  border: 1px dashed var(--color-input-border);
 }
 
 .add-task-button:hover {
-  background: #e2e8f0;
+  background: var(--color-hover);
 }
 
 .empty-column {
   padding: 16px 8px;
-  color: #64748b;
+  color: var(--color-text-muted);
   text-align: center;
   font-size: 13px;
 }
@@ -312,8 +331,10 @@ button:disabled {
 .edit-modal textarea {
   resize: vertical;
   padding: 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-input-border);
   border-radius: 8px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
   font: inherit;
 }
 
@@ -324,8 +345,8 @@ button:disabled {
 }
 
 .secondary-button {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--color-secondary-bg);
+  color: var(--color-secondary-text);
 }
 
 .new-column-form {
@@ -345,7 +366,7 @@ button:disabled {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgb(15 23 42 / 45%);
+  background: var(--color-overlay);
 }
 
 .move-modal {
@@ -353,7 +374,7 @@ button:disabled {
   max-width: 400px;
   padding: 24px;
   border-radius: 14px;
-  background: white;
+  background: var(--color-surface);
 }
 
 .move-modal label {
@@ -449,7 +470,7 @@ button:disabled {
 
 .draggable-task-dragging .task-card {
   border-style: dashed;
-  border-color: #4f46e5;
+  border-color: var(--color-primary);
   box-shadow: none;
 }
 
@@ -463,8 +484,8 @@ button:disabled {
   right: 4px;
   height: 3px;
   border-radius: 999px;
-  background: #4f46e5;
-  box-shadow: 0 0 0 2px rgb(79 70 229 / 18%);
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-ring);
   pointer-events: none;
 }
 
@@ -483,7 +504,7 @@ button:disabled {
 
 .saving-indicator {
   margin-left: auto;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
@@ -500,8 +521,8 @@ button:disabled {
 
 /* Tarefa vinda de outra coluna: destaque forte da coluna de destino. */
 .task-list-drag-over {
-  background-color: #e0e7ff;
-  outline: 2px dashed #4f46e5;
+  background-color: var(--color-primary-soft);
+  outline: 2px dashed var(--color-primary);
   outline-offset: -2px;
   border-radius: 8px;
 }
@@ -509,6 +530,6 @@ button:disabled {
 /* Reordenação na própria coluna: destaque discreto; a linha de inserção
    é o principal indicador. */
 .task-list-reordering {
-  background-color: rgb(79 70 229 / 5%);
+  background-color: var(--color-primary-faint);
   border-radius: 8px;
 }

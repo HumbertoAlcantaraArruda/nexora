@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AuthForm from "./components/AuthForm";
 import KanbanBoard from "./components/KanbanBoard";
+import ThemeToggle from "./components/ThemeToggle";
 import { SESSION_EXPIRED_EVENT } from "./services/api";
 import {
   getAuthenticatedUser,
@@ -64,6 +65,7 @@ export default function App() {
   return (
     <>
       <div className="app-user-bar">
+        <ThemeToggle />
         <span>Olá, {user.name}</span>
         <button type="button" onClick={() => void handleLogout()}>
           Sair

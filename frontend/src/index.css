@@ -1,4 +1,42 @@
+/* Paleta do tema claro (padrão). Os componentes usam apenas estas variáveis;
+   o tema escuro redefine os mesmos nomes em [data-theme="dark"]. */
 :root {
+  color-scheme: light;
+
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef2f7;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-input-border: #cbd5e1;
+  --color-input-bg: #ffffff;
+  --color-hover: #e2e8f0;
+
+  --color-primary: #4f46e5;
+  --color-primary-contrast: #ffffff;
+  --color-primary-text: #4f46e5;
+  --color-primary-soft: #e0e7ff;
+  --color-primary-faint: rgb(79 70 229 / 5%);
+  --color-primary-ring: rgb(79 70 229 / 18%);
+
+  --color-secondary-bg: #e2e8f0;
+  --color-secondary-text: #334155;
+
+  --color-error: #b91c1c;
+
+  --color-priority-low-bg: #dcfce7;
+  --color-priority-low-text: #166534;
+  --color-priority-medium-bg: #fef3c7;
+  --color-priority-medium-text: #92400e;
+  --color-priority-high-bg: #fee2e2;
+  --color-priority-high-text: #991b1b;
+
+  --shadow-card: 0 2px 5px rgb(15 23 42 / 4%);
+  --shadow-elevated: 0 12px 36px rgb(15 23 42 / 8%);
+  --color-overlay: rgb(15 23 42 / 45%);
+
   font-family:
     Inter,
     system-ui,
@@ -6,12 +44,50 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--color-text);
+  background: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #0b1120;
+  --color-surface: #1e293b;
+  --color-surface-muted: #111a2e;
+  --color-text: #e2e8f0;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-border: #334155;
+  --color-input-border: #475569;
+  --color-input-bg: #0f172a;
+  --color-hover: #334155;
+
+  --color-primary: #6366f1;
+  --color-primary-contrast: #ffffff;
+  --color-primary-text: #a5b4fc;
+  --color-primary-soft: rgb(99 102 241 / 18%);
+  --color-primary-faint: rgb(99 102 241 / 8%);
+  --color-primary-ring: rgb(99 102 241 / 30%);
+
+  --color-secondary-bg: #334155;
+  --color-secondary-text: #e2e8f0;
+
+  --color-error: #f87171;
+
+  --color-priority-low-bg: rgb(34 197 94 / 18%);
+  --color-priority-low-text: #86efac;
+  --color-priority-medium-bg: rgb(245 158 11 / 18%);
+  --color-priority-medium-text: #fcd34d;
+  --color-priority-high-bg: rgb(239 68 68 / 18%);
+  --color-priority-high-text: #fca5a5;
+
+  --shadow-card: 0 2px 5px rgb(0 0 0 / 30%);
+  --shadow-elevated: 0 12px 36px rgb(0 0 0 / 45%);
+  --color-overlay: rgb(2 6 23 / 70%);
 }
 
 * {

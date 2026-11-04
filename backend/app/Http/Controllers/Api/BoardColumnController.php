@@ -12,6 +12,14 @@ use Illuminate\Validation\ValidationException;
 class BoardColumnController extends Controller
 {
     /**
+     * Cor do ícone da coluna: hexadecimal de 6 dígitos (#rrggbb). Nula usa a
+     * cor padrão pela posição.
+     */
+    private const COLOR_RULES = ['sometimes', 'nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'];
+
+    private const COLOR_MESSAGES = ['color.regex' => 'A cor deve estar no formato #rrggbb.'];
+
+    /**
      * Lista as colunas dos quadros do usuário autenticado.
      */
     public function index(Request $request): JsonResponse
@@ -39,7 +47,8 @@ class BoardColumnController extends Controller
             'board_id' => ['required', 'integer', 'exists:boards,id'],
             'name' => ['required', 'string', 'max:255'],
             'position' => ['sometimes', 'integer', 'min:0'],
-        ]);
+            'color' => self::COLOR_RULES,
+        ], self::COLOR_MESSAGES);
 
         $board = $request->user()
             ->boards()
@@ -48,6 +57,7 @@ class BoardColumnController extends Controller
         $column = $board->columns()->create([
             'name' => $validated['name'],
             'position' => $validated['position'] ?? 0,
+            'color' => $this->normalizeColor($validated['color'] ?? null),
         ]);
 
         return response()->json([
@@ -82,7 +92,12 @@ class BoardColumnController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'position' => ['sometimes', 'integer', 'min:0'],
-        ]);
+            'color' => self::COLOR_RULES,
+        ], self::COLOR_MESSAGES);
+
+        if (array_key_exists('color', $validated)) {
+            $validated['color'] = $this->normalizeColor($validated['color']);
+        }
 
         $column->update($validated);
 
@@ -171,6 +186,14 @@ class BoardColumnController extends Controller
         return response()->json([
             'mensagem' => 'ok',
         ]);
+    }
+
+    /**
+     * Grava a cor sempre em minúsculas (ou nula, para usar a cor padrão).
+     */
+    private function normalizeColor(?string $color): ?string
+    {
+        return $color === null ? null : strtolower($color);
     }
 
     /**

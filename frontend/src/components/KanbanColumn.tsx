@@ -1,5 +1,5 @@
 
-import { useState, type DragEvent, type FormEvent } from "react";
+import type { CSSProperties, DragEvent } from "react";
 import type {
   KanbanColumn as Column,
   Task,
@@ -12,18 +12,11 @@ import Icon from "./Icon";
 
 interface KanbanColumnProps {
   column: Column;
+  // Cor da bolinha do cabeçalho (varia por posição da coluna).
+  color: string;
   busy: boolean;
-  onCreateTask: (
-    columnId: number,
-    data: {
-      title: string;
-      description: string;
-      priority: Task["priority"];
-    },
-  ) => Promise<boolean>;
-  onDeleteTask: (id: number) => Promise<void>;
-  onEditTask: (task: Task) => void;
-  onRenameColumn: (id: number, name: string) => Promise<boolean>;
+  onOpenTask: (task: Task) => void;
+  onEditColumn: (column: Column) => void;
   onDropTask: (
     taskId: number,
     destinationColumnId: number,
@@ -46,11 +39,10 @@ interface KanbanColumnProps {
 
 export default function KanbanColumn({
   column,
+  color,
   busy,
-  onCreateTask,
-  onDeleteTask,
-  onEditTask,
-  onRenameColumn,
+  onOpenTask,
+  onEditColumn,
   onDropTask,
   onReorderTask,
   onDeleteColumn,
@@ -63,15 +55,6 @@ export default function KanbanColumn({
   onColumnDragStart,
   onColumnDragEnd,
 }: KanbanColumnProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<Task["priority"]>("medium");
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState("");
-  const [nameError, setNameError] = useState("");
-
   const isDragOver = dragState?.overColumnId === column.id;
   const isReordering =
     isDragOver && dragState?.sourceColumnId === column.id;
@@ -91,30 +74,6 @@ export default function KanbanColumn({
       ? insertIndex
       : null;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
-
-    try {
-      const created = await onCreateTask(column.id, {
-        title,
-        description,
-        priority,
-      });
-
-      // Em caso de falha mantém o formulário preenchido para nova tentativa;
-      // a mensagem de erro é exibida pelo quadro.
-      if (created) {
-        setTitle("");
-        setDescription("");
-        setPriority("medium");
-        setShowForm(false);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleDeleteColumn() {
     const taskCount = column.tasks.length;
 
@@ -129,44 +88,6 @@ export default function KanbanColumn({
 
     if (confirmed) {
       await onDeleteColumn(column.id);
-    }
-  }
-
-  function startRenaming() {
-    setNameDraft(column.name);
-    setNameError("");
-    setEditingName(true);
-  }
-
-  function cancelRenaming() {
-    setEditingName(false);
-    setNameError("");
-  }
-
-  async function handleRename(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const name = nameDraft.trim();
-
-    // Validação no frontend para feedback imediato; o backend valida novamente.
-    if (!name) {
-      setNameError("Informe o nome da coluna.");
-      return;
-    }
-
-    if (name.length > 255) {
-      setNameError("O nome deve ter no máximo 255 caracteres.");
-      return;
-    }
-
-    if (name === column.name) {
-      cancelRenaming();
-      return;
-    }
-
-    // Em caso de falha mantém o campo aberto; a mensagem aparece no quadro.
-    if (await onRenameColumn(column.id, name)) {
-      cancelRenaming();
     }
   }
 
@@ -280,85 +201,45 @@ export default function KanbanColumn({
   return (
     <section
       className={`kanban-column${isColumnDragging ? " kanban-column-dragging" : ""}`}
+      style={{ "--column-color": color } as CSSProperties}
     >
-      {editingName ? (
-        <form
-          className="column-rename-form"
-          onSubmit={(event) => void handleRename(event)}
-          noValidate
-        >
-          <input
-            aria-label="Nome da coluna"
-            value={nameDraft}
-            onChange={(event) => setNameDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") cancelRenaming();
-            }}
-            maxLength={255}
-            autoFocus
-          />
+      <header
+        className="column-header"
+        draggable={!busy}
+        onDragStart={handleColumnDragStart}
+        onDragEnd={onColumnDragEnd}
+        title="Arraste para reordenar a coluna"
+      >
+        <h2>
+          <span className="column-dot" aria-hidden="true" />
+          <span className="column-name">{column.name}</span>
+          <span className="column-count">({column.tasks.length})</span>
+        </h2>
 
-          {nameError && (
-            <p className="auth-error" role="alert">
-              {nameError}
-            </p>
-          )}
+        <div className="column-actions">
+          <button
+            type="button"
+            className="icon-button"
+            title="Renomear coluna"
+            aria-label={`Renomear a coluna ${column.name}`}
+            disabled={busy}
+            onClick={() => onEditColumn(column)}
+          >
+            <Icon name="pencil" size={15} />
+          </button>
 
-          <div className="form-actions">
-            <button type="submit" disabled={busy}>
-              {busy ? "Salvando..." : "Salvar"}
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={cancelRenaming}
-              disabled={busy}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      ) : (
-        <header
-          className="column-header"
-          draggable={!busy}
-          onDragStart={handleColumnDragStart}
-          onDragEnd={onColumnDragEnd}
-          title="Arraste para reordenar a coluna"
-        >
-          <div>
-            <h2>{column.name}</h2>
-            <span className="task-count">
-              {column.tasks.length} tarefas
-            </span>
-          </div>
-
-          <div className="column-actions">
-            <button
-              type="button"
-              className="icon-button"
-              title="Renomear coluna"
-              aria-label="Renomear coluna"
-              disabled={busy}
-              onClick={startRenaming}
-            >
-              <Icon name="pencil" size={16} />
-            </button>
-
-            <button
-              type="button"
-              className="icon-button icon-button-danger"
-              title="Excluir coluna"
-              aria-label="Excluir coluna"
-              disabled={busy}
-              onClick={() => void handleDeleteColumn()}
-            >
-              <Icon name="trash" size={16} />
-            </button>
-          </div>
-        </header>
-      )}
+          <button
+            type="button"
+            className="icon-button icon-button-danger"
+            title="Excluir coluna"
+            aria-label={`Excluir a coluna ${column.name}`}
+            disabled={busy}
+            onClick={() => void handleDeleteColumn()}
+          >
+            <Icon name="trash" size={15} />
+          </button>
+        </div>
+      </header>
 
       <div
         className={[
@@ -389,74 +270,14 @@ export default function KanbanColumn({
             onDragStart={(event) => handleDragStart(event, task.id)}
             onDragEnd={onTaskDragEnd}
           >
-            <TaskCard
-              task={task}
-              disabled={busy}
-              onDelete={(id) => void onDeleteTask(id)}
-              onEdit={onEditTask}
-            />
+            <TaskCard task={task} onOpen={onOpenTask} />
           </div>
         ))}
 
         {column.tasks.length === 0 && (
-          <p className="empty-column">
-            Nenhuma tarefa nesta coluna
-          </p>
+          <p className="empty-column">Arraste tarefas para cá</p>
         )}
       </div>
-
-      {showForm ? (
-        <form className="task-form" onSubmit={handleSubmit}>
-          <input
-            placeholder="Título da tarefa"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            maxLength={255}
-            required
-          />
-
-          <textarea
-            placeholder="Descrição (opcional)"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            rows={3}
-          />
-
-          <select
-            value={priority}
-            onChange={(event) =>
-              setPriority(event.target.value as Task["priority"])
-            }
-          >
-            <option value="low">Prioridade baixa</option>
-            <option value="medium">Prioridade média</option>
-            <option value="high">Prioridade alta</option>
-          </select>
-
-          <div className="form-actions">
-            <button type="submit" disabled={saving || busy}>
-              {saving ? "Salvando..." : "Salvar tarefa"}
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setShowForm(false)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      ) : (
-        <button
-          type="button"
-          className="add-task-button"
-          onClick={() => setShowForm(true)}
-        >
-          <Icon name="plus" size={16} />
-          Adicionar tarefa
-        </button>
-      )}
     </section>
   );
 }

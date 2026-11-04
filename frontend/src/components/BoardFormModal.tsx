@@ -1,17 +1,19 @@
 import { useState, type FormEvent } from "react";
 import type { Board } from "../services/boardService";
+import Modal from "./Modal";
 
-export interface BoardEditData {
+export interface BoardFormData {
   name: string;
   description: string | null;
 }
 
-interface BoardEditModalProps {
-  board: Board;
+interface BoardFormModalProps {
+  // Sem quadro: criação; com quadro: edição (campos preenchidos).
+  board?: Board;
   saving: boolean;
   error: string;
-  // Resolve true quando a API confirma; o modal então é fechado pelo pai.
-  onSave: (data: BoardEditData) => Promise<boolean>;
+  // Resolve true quando a API confirma; o pai então fecha o modal.
+  onSave: (data: BoardFormData) => Promise<boolean>;
   onCancel: () => void;
 }
 
@@ -30,15 +32,15 @@ function validate(name: string, description: string): string {
   return "";
 }
 
-export default function BoardEditModal({
+export default function BoardFormModal({
   board,
   saving,
   error,
   onSave,
   onCancel,
-}: BoardEditModalProps) {
-  const [name, setName] = useState(board.name);
-  const [description, setDescription] = useState(board.description ?? "");
+}: BoardFormModalProps) {
+  const [name, setName] = useState(board?.name ?? "");
+  const [description, setDescription] = useState(board?.description ?? "");
   const [validationError, setValidationError] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -61,23 +63,17 @@ export default function BoardEditModal({
   const visibleError = validationError || error;
 
   return (
-    <div
-      className="modal-overlay"
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && !saving) onCancel();
-      }}
+    <Modal
+      title={board ? "Editar quadro" : "Novo quadro"}
+      onClose={onCancel}
+      closeDisabled={saving}
     >
       <form
-        className="move-modal edit-modal"
+        className="modal-form"
         onSubmit={(event) => void handleSubmit(event)}
         noValidate
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="board-edit-title"
       >
-        <h2 id="board-edit-title">Editar quadro</h2>
-
-        <label>
+        <label className="form-field">
           Nome do quadro
           <input
             value={name}
@@ -85,13 +81,14 @@ export default function BoardEditModal({
               setName(event.target.value);
               setValidationError("");
             }}
+            placeholder="Ex.: Lançamento da plataforma"
             maxLength={NAME_MAX}
             required
             autoFocus
           />
         </label>
 
-        <label>
+        <label className="form-field">
           Descrição
           <textarea
             value={description}
@@ -99,32 +96,26 @@ export default function BoardEditModal({
               setDescription(event.target.value);
               setValidationError("");
             }}
+            placeholder="Opcional"
             maxLength={DESCRIPTION_MAX}
-            rows={4}
+            rows={3}
           />
         </label>
 
         {visibleError && (
-          <p className="auth-error" role="alert">
+          <p className="form-error" role="alert">
             {visibleError}
           </p>
         )}
 
-        <div className="form-actions">
-          <button type="submit" disabled={saving}>
-            {saving ? "Salvando..." : "Salvar alterações"}
-          </button>
-
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={onCancel}
-            disabled={saving}
-          >
-            Cancelar
-          </button>
-        </div>
+        <button type="submit" className="button button-primary" disabled={saving}>
+          {saving
+            ? "Salvando..."
+            : board
+              ? "Salvar alterações"
+              : "Criar quadro"}
+        </button>
       </form>
-    </div>
+    </Modal>
   );
 }

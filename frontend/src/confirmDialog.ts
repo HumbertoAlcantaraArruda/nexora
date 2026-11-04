@@ -32,8 +32,8 @@ export async function confirmDialog({
       title: "swal-title",
       htmlContainer: "swal-text",
       actions: "swal-actions",
-      cancelButton: "secondary-button",
-      confirmButton: danger ? "danger-solid-button" : "",
+      cancelButton: "button button-secondary",
+      confirmButton: danger ? "button button-danger" : "button button-primary",
     },
   });
 

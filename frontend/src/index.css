@@ -1,49 +1,63 @@
-/* Paleta do tema claro (padrão). Os componentes usam apenas estas variáveis;
-   o tema escuro redefine os mesmos nomes em [data-theme="dark"]. */
+/* Paleta do tema claro (padrão), inspirada no layout de referência.
+   Os componentes usam apenas estas variáveis; o tema escuro redefine os
+   mesmos nomes em [data-theme="dark"]. */
 :root {
   color-scheme: light;
 
-  --color-bg: #f8fafc;
+  --color-bg: #f4f7fd;
   --color-surface: #ffffff;
-  --color-surface-muted: #eef2f7;
-  --color-text: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748b;
-  --color-border: #e2e8f0;
-  --color-input-border: #cbd5e1;
+  --color-surface-raised: #ffffff;
+  --color-surface-muted: #e9effa;
+  --color-text: #000112;
+  --color-text-secondary: #3e3f4e;
+  --color-text-muted: #828fa3;
+  --color-border: #e4ebfa;
+  --color-input-border: rgb(130 143 163 / 25%);
   --color-input-bg: #ffffff;
-  --color-hover: #e2e8f0;
+  --color-hover: #f4f7fd;
 
-  --color-primary: #4f46e5;
+  --color-primary: #635fc7;
+  --color-primary-hover: #a8a4ff;
   --color-primary-contrast: #ffffff;
-  --color-primary-text: #4f46e5;
-  --color-primary-soft: #e0e7ff;
-  --color-primary-faint: rgb(79 70 229 / 5%);
-  --color-primary-ring: rgb(79 70 229 / 18%);
+  --color-primary-text: #635fc7;
+  --color-primary-soft: rgb(99 95 199 / 10%);
+  --color-primary-faint: rgb(99 95 199 / 5%);
+  --color-primary-ring: rgb(99 95 199 / 25%);
 
-  --color-secondary-bg: #e2e8f0;
-  --color-secondary-text: #334155;
+  --color-secondary-bg: rgb(99 95 199 / 10%);
+  --color-secondary-hover: rgb(99 95 199 / 25%);
+  --color-secondary-text: #635fc7;
 
-  --color-error: #b91c1c;
+  --color-error: #ea5555;
+  --color-error-hover: #ff9898;
+  --color-error-soft: rgb(234 85 85 / 10%);
 
-  --color-priority-low-bg: #dcfce7;
-  --color-priority-low-text: #166534;
-  --color-priority-medium-bg: #fef3c7;
-  --color-priority-medium-text: #92400e;
-  --color-priority-high-bg: #fee2e2;
-  --color-priority-high-text: #991b1b;
+  --color-priority-low: #22c55e;
+  --color-priority-medium: #f59e0b;
+  --color-priority-high: #ea5555;
 
-  --shadow-card: 0 2px 5px rgb(15 23 42 / 4%);
-  --shadow-elevated: 0 12px 36px rgb(15 23 42 / 8%);
-  --color-overlay: rgb(15 23 42 / 45%);
+  --shadow-card: 0 4px 6px rgb(54 78 126 / 10%);
+  --shadow-elevated: 0 10px 20px rgb(54 78 126 / 25%);
+  --color-overlay: rgb(0 0 0 / 50%);
+
+  --new-column-bg: linear-gradient(
+    180deg,
+    #e9effa 0%,
+    rgb(233 239 250 / 50%) 100%
+  );
+
+  --sidebar-width: 300px;
+  --topbar-height: 96px;
+  --radius-pill: 24px;
 
   font-family:
-    Inter,
+    "Plus Jakarta Sans",
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  font-weight: 500;
   color: var(--color-text);
   background: var(--color-bg);
   font-synthesis: none;
@@ -55,39 +69,43 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-bg: #0b1120;
-  --color-surface: #1e293b;
-  --color-surface-muted: #111a2e;
-  --color-text: #e2e8f0;
-  --color-text-secondary: #cbd5e1;
-  --color-text-muted: #94a3b8;
-  --color-border: #334155;
-  --color-input-border: #475569;
-  --color-input-bg: #0f172a;
-  --color-hover: #334155;
+  --color-bg: #20212c;
+  --color-surface: #2b2c37;
+  --color-surface-raised: #2b2c37;
+  --color-surface-muted: #2b2c37;
+  --color-text: #ffffff;
+  --color-text-secondary: #e4ebfa;
+  --color-text-muted: #828fa3;
+  --color-border: #3e3f4e;
+  --color-input-border: rgb(130 143 163 / 25%);
+  --color-input-bg: #2b2c37;
+  --color-hover: #3e3f4e;
 
-  --color-primary: #6366f1;
+  --color-primary: #635fc7;
+  --color-primary-hover: #a8a4ff;
   --color-primary-contrast: #ffffff;
-  --color-primary-text: #a5b4fc;
-  --color-primary-soft: rgb(99 102 241 / 18%);
-  --color-primary-faint: rgb(99 102 241 / 8%);
-  --color-primary-ring: rgb(99 102 241 / 30%);
+  --color-primary-text: #a8a4ff;
+  --color-primary-soft: rgb(99 95 199 / 20%);
+  --color-primary-faint: rgb(99 95 199 / 10%);
+  --color-primary-ring: rgb(168 164 255 / 35%);
 
-  --color-secondary-bg: #334155;
-  --color-secondary-text: #e2e8f0;
+  --color-secondary-bg: #ffffff;
+  --color-secondary-hover: #e4ebfa;
+  --color-secondary-text: #635fc7;
 
-  --color-error: #f87171;
+  --color-error: #ea5555;
+  --color-error-hover: #ff9898;
+  --color-error-soft: rgb(234 85 85 / 15%);
 
-  --color-priority-low-bg: rgb(34 197 94 / 18%);
-  --color-priority-low-text: #86efac;
-  --color-priority-medium-bg: rgb(245 158 11 / 18%);
-  --color-priority-medium-text: #fcd34d;
-  --color-priority-high-bg: rgb(239 68 68 / 18%);
-  --color-priority-high-text: #fca5a5;
+  --shadow-card: 0 4px 6px rgb(54 78 126 / 10%);
+  --shadow-elevated: 0 10px 30px rgb(0 0 0 / 45%);
+  --color-overlay: rgb(0 0 0 / 60%);
 
-  --shadow-card: 0 2px 5px rgb(0 0 0 / 30%);
-  --shadow-elevated: 0 12px 36px rgb(0 0 0 / 45%);
-  --color-overlay: rgb(2 6 23 / 70%);
+  --new-column-bg: linear-gradient(
+    180deg,
+    rgb(43 44 55 / 25%) 0%,
+    rgb(43 44 55 / 12.5%) 100%
+  );
 }
 
 * {

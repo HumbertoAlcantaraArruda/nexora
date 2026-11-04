@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { login, register } from "../services/authService";
 import type { User } from "../services/authService";
+import Logo from "./Logo";
 
 interface AuthFormProps {
   onAuthenticated: (user: User) => void;
@@ -45,11 +46,19 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
   return (
     <main className="auth-container">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>Meu Kanban</h1>
-        <p>{isRegister ? "Crie sua conta" : "Entre na sua conta"}</p>
+        <Logo />
+
+        <div className="auth-heading">
+          <h1>{isRegister ? "Crie sua conta" : "Bem-vindo de volta"}</h1>
+          <p>
+            {isRegister
+              ? "Comece a organizar suas tarefas em quadros."
+              : "Entre para acessar seus quadros."}
+          </p>
+        </div>
 
         {isRegister && (
-          <label>
+          <label className="form-field">
             Nome
             <input
               type="text"
@@ -60,7 +69,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
           </label>
         )}
 
-        <label>
+        <label className="form-field">
           E-mail
           <input
             type="email"
@@ -70,7 +79,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
           />
         </label>
 
-        <label>
+        <label className="form-field">
           Senha
           <input
             type="password"
@@ -82,7 +91,7 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
         </label>
 
         {isRegister && (
-          <label>
+          <label className="form-field">
             Confirme sua senha
             <input
               type="password"
@@ -94,9 +103,17 @@ export default function AuthForm({ onAuthenticated }: AuthFormProps) {
           </label>
         )}
 
-        {error && <p className="auth-error">{error}</p>}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
 
-        <button type="submit" disabled={loading}>
+        <button
+          type="submit"
+          className="button button-primary"
+          disabled={loading}
+        >
           {loading ? "Aguarde..." : isRegister ? "Cadastrar" : "Entrar"}
         </button>
 

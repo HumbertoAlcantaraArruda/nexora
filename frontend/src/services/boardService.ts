@@ -1,5 +1,6 @@
 
 import { api } from './api';
+import type { KanbanColumn } from '../types/kanban';
 
 export interface Board {
   id: number;
@@ -8,11 +9,24 @@ export interface Board {
   description: string | null;
   created_at: string;
   updated_at: string;
+  // Presentes na listagem (GET /boards).
+  columns_count?: number;
+  tasks_count?: number;
+}
+
+// Quadro com colunas e tarefas (GET /boards/{id}).
+export interface BoardWithColumns extends Board {
+  columns: KanbanColumn[];
 }
 
 interface BoardResponse {
   mensagem: string;
   quadro: Board;
+}
+
+interface BoardWithColumnsResponse {
+  mensagem: string;
+  quadro: BoardWithColumns;
 }
 
 interface BoardsResponse {
@@ -31,8 +45,8 @@ export async function getBoards(): Promise<Board[]> {
   return response.data.quadros;
 }
 
-export async function getBoard(id: number): Promise<Board> {
-  const response = await api.get<BoardResponse>(`/boards/${id}`);
+export async function getBoard(id: number): Promise<BoardWithColumns> {
+  const response = await api.get<BoardWithColumnsResponse>(`/boards/${id}`);
 
   return response.data.quadro;
 }

@@ -5,92 +5,120 @@ import {
   getBoards,
   type Board,
 } from "../services/boardService";
-import type { User } from "../services/authService";
-import { logout } from "../services/authService";
+import { getApiErrorMessage } from "../services/apiErrors";
 
 interface BoardListProps {
-  user: User;
-  onLogout: () => void;
+  onOpenBoard: (boardId: number) => void;
 }
 
-export default function BoardList({ user, onLogout }: BoardListProps) {
+function plural(count: number, singular: string, pluralForm: string) {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+export default function BoardList({ onOpenBoard }: BoardListProps) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-
-  async function loadBoards() {
-    try {
-      setError("");
-      const result = await getBoards();
-      setBoards(result);
-    } catch {
-      setError("Não foi possível carregar os quadros.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    async function loadBoards() {
+      try {
+        setBoards(await getBoards());
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Não foi possível carregar os quadros."));
+      } finally {
+        setLoading(false);
+      }
+    }
+
     void loadBoards();
   }, []);
 
   async function handleCreateBoard(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    try {
-      setError("");
+    const trimmedName = name.trim();
 
-      const board = await createBoard({
-        name,
-        description: description || null,
-      });
-
-      setBoards((current) => [board, ...current]);
-      setName("");
-      setDescription("");
-    } catch {
-      setError("Não foi possível criar o quadro.");
-    }
-  }
-
-  async function handleDeleteBoard(id: number) {
-    if (!window.confirm("Deseja excluir este quadro?")) {
+    // Validação no frontend para feedback imediato; o backend valida novamente.
+    if (!trimmedName) {
+      setError("Informe o nome do quadro.");
       return;
     }
 
+    setSaving(true);
+    setError("");
+
     try {
-      setError("");
-      await deleteBoard(id);
-      setBoards((current) => current.filter((board) => board.id !== id));
-    } catch {
-      setError("Não foi possível excluir o quadro.");
+      const board = await createBoard({
+        name: trimmedName,
+        description: description.trim() || null,
+      });
+
+      setBoards((current) => [
+        { ...board, columns_count: 0, tasks_count: 0 },
+        ...current,
+      ]);
+      setName("");
+      setDescription("");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Não foi possível criar o quadro."));
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function handleLogout() {
-    await logout();
-    onLogout();
+  async function handleDeleteBoard(board: Board) {
+    const content = [
+      plural(board.columns_count ?? 0, "coluna", "colunas"),
+      plural(board.tasks_count ?? 0, "tarefa", "tarefas"),
+    ].join(" e ");
+
+    if (
+      !window.confirm(
+        `Excluir o quadro "${board.name}"? Isso também apaga ${content}. Esta ação não pode ser desfeita.`,
+      )
+    ) {
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      await deleteBoard(board.id);
+      setBoards((current) => current.filter((item) => item.id !== board.id));
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Não foi possível excluir o quadro."));
+
+      // Mantém a lista fiel ao servidor (ex.: quadro já excluído em outra aba).
+      try {
+        setBoards(await getBoards());
+      } catch {
+        // A mensagem de erro já está visível.
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <main className="board-container">
       <header className="board-header">
         <div>
-          <h1>Meu Kanban</h1>
-          <p>Olá, {user.name}</p>
+          <h1>Meus quadros</h1>
+          <p className="board-subtitle">
+            Escolha um quadro para organizar colunas e tarefas.
+          </p>
         </div>
-
-        <button type="button" onClick={handleLogout}>
-          Sair
-        </button>
       </header>
 
       <section className="board-create">
         <h2>Novo quadro</h2>
 
-        <form onSubmit={handleCreateBoard}>
+        <form onSubmit={handleCreateBoard} noValidate>
           <label>
             Nome do quadro
             <input
@@ -109,14 +137,19 @@ export default function BoardList({ user, onLogout }: BoardListProps) {
             />
           </label>
 
-          <button type="submit">Criar quadro</button>
+          <button type="submit" disabled={saving}>
+            {saving ? "Salvando..." : "Criar quadro"}
+          </button>
         </form>
       </section>
 
-      <section>
-        <h2>Meus quadros</h2>
+      {error && (
+        <p className="auth-error" role="alert">
+          {error}
+        </p>
+      )}
 
-        {error && <p className="auth-error">{error}</p>}
+      <section>
         {loading && <p>Carregando quadros...</p>}
 
         {!loading && boards.length === 0 && (
@@ -129,9 +162,29 @@ export default function BoardList({ user, onLogout }: BoardListProps) {
               <h3>{board.name}</h3>
               <p>{board.description || "Sem descrição"}</p>
 
-              <button type="button" onClick={() => handleDeleteBoard(board.id)}>
-                Excluir
-              </button>
+              <small className="board-card-stats">
+                {plural(board.columns_count ?? 0, "coluna", "colunas")} ·{" "}
+                {plural(board.tasks_count ?? 0, "tarefa", "tarefas")}
+              </small>
+
+              <div className="form-actions board-card-actions">
+                <button
+                  type="button"
+                  onClick={() => onOpenBoard(board.id)}
+                  disabled={saving}
+                >
+                  Abrir quadro
+                </button>
+
+                <button
+                  type="button"
+                  className="secondary-button danger-button"
+                  onClick={() => void handleDeleteBoard(board)}
+                  disabled={saving}
+                >
+                  Excluir
+                </button>
+              </div>
             </article>
           ))}
         </div>

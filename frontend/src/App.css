@@ -131,12 +131,76 @@ button:disabled {
 
 .app-user-bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 16px;
   padding: 12px 32px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+}
+
+.app-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Marca na barra superior: leva para "Meus quadros". */
+.app-brand {
+  padding: 4px 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.app-brand:hover {
+  color: var(--color-primary-text);
+}
+
+/* Link "← Meus quadros" no topo do kanban. */
+.back-button {
+  margin-bottom: 8px;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--color-primary-text);
+  font-size: 14px;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
+.board-subtitle {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+}
+
+.board-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.board-card h3 {
+  margin: 0 0 8px;
+}
+
+.board-card p {
+  margin: 0 0 12px;
+}
+
+.board-card-stats {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.board-card-actions {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.danger-button {
+  color: var(--color-error);
 }
 
 .theme-toggle {
@@ -177,14 +241,6 @@ button:disabled {
   color: var(--color-text-muted);
 }
 
-.board-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 220px;
-}
-
-.board-selector select,
 .task-form select,
 .move-modal select,
 .edit-modal select {
@@ -441,10 +497,6 @@ button:disabled {
   .kanban-page-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .board-selector {
-    width: 100%;
   }
 
   .kanban-columns {

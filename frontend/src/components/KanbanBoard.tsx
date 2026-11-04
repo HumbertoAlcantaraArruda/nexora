@@ -7,21 +7,20 @@ import {
   type DragEvent,
   type FormEvent,
 } from "react";
+import { isAxiosError } from "axios";
 import type {
   ColumnDragState,
-  KanbanBoard as Board,
   KanbanColumn as Column,
   Task,
   TaskDragState,
 } from "../types/kanban";
 import { isColumnDrag } from "../dragTypes";
 
-import { getBoards } from "../services/boardService";
+import { getBoard, type Board } from "../services/boardService";
 
 import {
   createColumn,
   deleteColumn,
-  getColumns,
   reorderColumns,
   updateColumn,
 } from "../services/columnService";
@@ -29,7 +28,6 @@ import {
 import {
   createTask,
   deleteTask,
-  getTasks,
   reorderTasks,
   updateTask,
 } from "../services/taskService";
@@ -42,27 +40,33 @@ import {
 import KanbanColumn from "./KanbanColumn";
 import TaskEditModal, { type TaskEditData } from "./TaskEditModal";
 
-// Busca colunas e tarefas do quadro, ordenadas por position.
-async function fetchBoardColumns(boardId: number): Promise<Column[]> {
-  const [allColumns, allTasks] = await Promise.all([
-    getColumns(),
-    getTasks(),
-  ]);
+// Busca o quadro com colunas e tarefas, ordenadas por position.
+async function fetchBoard(
+  boardId: number,
+): Promise<{ board: Board; columns: Column[] }> {
+  const { columns, ...board } = await getBoard(boardId);
 
-  return allColumns
-    .filter((column) => column.board_id === boardId)
-    .map((column) => ({
-      ...column,
-      tasks: allTasks
-        .filter((task) => task.board_column_id === column.id)
-        .sort((a, b) => a.position - b.position),
-    }))
-    .sort((a, b) => a.position - b.position);
+  return {
+    board,
+    columns: [...columns]
+      .sort((a, b) => a.position - b.position)
+      .map((column) => ({
+        ...column,
+        tasks: [...(column.tasks ?? [])].sort(
+          (a, b) => a.position - b.position,
+        ),
+      })),
+  };
 }
 
-export default function KanbanBoard() {
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
+interface KanbanBoardProps {
+  boardId: number;
+  onBack: () => void;
+}
+
+export default function KanbanBoard({ boardId, onBack }: KanbanBoardProps) {
+  const [board, setBoard] = useState<Board | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [columns, setColumns] = useState<Column[]>([]);
   const [columnName, setColumnName] = useState("");
   const [showColumnForm, setShowColumnForm] = useState(false);
@@ -78,53 +82,39 @@ export default function KanbanBoard() {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
+  // O componente é remontado (key) ao trocar de quadro, então carrega uma vez.
   useEffect(() => {
-    async function loadBoards() {
+    async function loadBoard() {
       try {
-        const result = await getBoards();
-
-        setBoards(result);
-
-        if (result.length > 0) {
-          setSelectedBoardId(result[0].id);
-        }
+        const result = await fetchBoard(boardId);
+        setBoard(result.board);
+        setColumns(result.columns);
       } catch (err) {
-        setError(getApiErrorMessage(err, "Não foi possível carregar os quadros."));
+        if (isAxiosError(err) && err.response?.status === 404) {
+          setNotFound(true);
+        } else {
+          setError(getApiErrorMessage(err, "Não foi possível carregar o quadro."));
+        }
       } finally {
         setLoading(false);
       }
     }
 
-    void loadBoards();
-  }, []);
-
-  useEffect(() => {
-    if (selectedBoardId === null) {
-      setColumns([]);
-      return;
-    }
-
-    async function loadBoardContent(boardId: number) {
-      try {
-        setError("");
-        setColumns(await fetchBoardColumns(boardId));
-      } catch (err) {
-        setError(
-          getApiErrorMessage(err, "Não foi possível carregar as colunas e tarefas."),
-        );
-      }
-    }
-
-    void loadBoardContent(selectedBoardId);
-  }, [selectedBoardId]);
+    void loadBoard();
+  }, [boardId]);
 
   // Recarrega o quadro do servidor para que a tela reflita o que foi persistido.
   async function resyncBoard() {
-    if (selectedBoardId === null) return;
-
     try {
-      setColumns(await fetchBoardColumns(selectedBoardId));
-    } catch {
+      const result = await fetchBoard(boardId);
+      setBoard(result.board);
+      setColumns(result.columns);
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 404) {
+        setNotFound(true);
+        return;
+      }
+
       setError((current) =>
         `${current} Não foi possível recarregar o quadro; recarregue a página.`.trim(),
       );
@@ -166,13 +156,11 @@ export default function KanbanBoard() {
   async function handleCreateColumn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (selectedBoardId === null) return;
-
     const created = await runMutation(
       "Não foi possível criar a coluna.",
       async () => {
         const column = await createColumn({
-          board_id: selectedBoardId,
+          board_id: boardId,
           name: columnName,
           position: columns.length,
         });
@@ -512,8 +500,6 @@ export default function KanbanBoard() {
   }
 
   async function handleReorderColumns(columnId: number, insertIndex: number) {
-    if (selectedBoardId === null) return;
-
     const fromIndex = columns.findIndex((column) => column.id === columnId);
 
     if (fromIndex === -1) return;
@@ -541,7 +527,7 @@ export default function KanbanBoard() {
         setColumns(reorderedColumns);
 
         await reorderColumns(
-          selectedBoardId,
+          boardId,
           reorderedColumns.map((column) => column.id),
         );
       },
@@ -566,35 +552,37 @@ export default function KanbanBoard() {
   );
 
   if (loading) {
-    return <p className="loading-screen">Carregando quadros...</p>;
+    return <p className="loading-screen">Carregando quadro...</p>;
+  }
+
+  if (notFound) {
+    return (
+      <main className="kanban-page">
+        <button type="button" className="back-button" onClick={onBack}>
+          ← Meus quadros
+        </button>
+        <p className="auth-error" role="alert">
+          Este quadro não existe mais ou você não tem acesso a ele.
+        </p>
+      </main>
+    );
   }
 
   return (
     <main className="kanban-page">
       <header className="kanban-page-header">
         <div>
-          <h1>Meu Kanban</h1>
-          <p>Organize suas tarefas em um só lugar</p>
+          <button
+            type="button"
+            className="back-button"
+            onClick={onBack}
+            disabled={saving}
+          >
+            ← Meus quadros
+          </button>
+          <h1>{board?.name}</h1>
+          {board?.description && <p>{board.description}</p>}
         </div>
-
-        {boards.length > 0 && (
-          <label className="board-selector">
-            Quadro
-            <select
-              value={selectedBoardId ?? ""}
-              onChange={(event) =>
-                setSelectedBoardId(Number(event.target.value))
-              }
-              disabled={saving}
-            >
-              {boards.map((board) => (
-                <option key={board.id} value={board.id}>
-                  {board.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </header>
 
       {error && (
@@ -603,14 +591,10 @@ export default function KanbanBoard() {
         </p>
       )}
 
-      {boards.length === 0 ? (
-        <p>Você ainda não tem quadros. Crie um quadro para começar.</p>
-      ) : (
+      {board && (
         <>
           <div className="kanban-toolbar">
-            <h2>
-              {boards.find((board) => board.id === selectedBoardId)?.name}
-            </h2>
+            <h2>Colunas</h2>
 
             {saving && (
               <span className="saving-indicator" role="status">

@@ -11,13 +11,14 @@ use Illuminate\Http\Request;
 class BoardController extends Controller
 {
     /**
-     * Lista os quadros do usuário autenticado.
+     * Lista os quadros do usuário autenticado, com a quantidade de colunas
+     * e tarefas de cada um (exibida na tela de quadros).
      */
     public function index(Request $request): JsonResponse
     {
         $boards = $request->user()
             ->boards()
-            ->with('columns')
+            ->withCount(['columns', 'tasks'])
             ->latest()
             ->get();
 
@@ -83,7 +84,8 @@ class BoardController extends Controller
     }
 
     /**
-     * Exclui um quadro.
+     * Exclui um quadro. Colunas e tarefas são removidas em cascata pelas
+     * chaves estrangeiras.
      */
     public function destroy(Request $request, string $id): JsonResponse
     {

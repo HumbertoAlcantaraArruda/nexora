@@ -45,7 +45,7 @@ class TaskController extends Controller
                 'exists:board_columns,id',
             ],
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'priority' => [
                 'sometimes',
                 'required',
@@ -100,7 +100,7 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['sometimes', 'nullable', 'string'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'priority' => [
                 'sometimes',
                 'required',

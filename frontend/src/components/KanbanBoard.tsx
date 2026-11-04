@@ -18,7 +18,7 @@ import {
   createTask,
   deleteTask,
   getTasks,
-  updateTask,
+  reorderTasks,
 } from "../services/taskService";
 
 import KanbanColumn from "./KanbanColumn";
@@ -189,30 +189,34 @@ export default function KanbanBoard() {
 
     if (!destination || !source) return;
 
+    const sourceTasks = source.tasks
+      .filter((task) => task.id !== moveTask.id)
+      .map((task, position) => ({ ...task, position }));
+
+    const destinationTasks = [
+      ...destination.tasks,
+      { ...moveTask, board_column_id: destinationId },
+    ].map((task, position) => ({ ...task, position }));
+
     try {
       setError("");
 
-      const updatedTask = await updateTask(moveTask.id, {
-        board_column_id: destinationId,
-        position: destination.tasks.length,
-      });
+      await reorderTasks([
+        { id: source.id, task_ids: sourceTasks.map((task) => task.id) },
+        {
+          id: destinationId,
+          task_ids: destinationTasks.map((task) => task.id),
+        },
+      ]);
 
       setColumns((current) =>
         current.map((column) => {
           if (column.id === source.id) {
-            return {
-              ...column,
-              tasks: column.tasks
-                .filter((task) => task.id !== moveTask.id)
-                .map((task, position) => ({ ...task, position })),
-            };
+            return { ...column, tasks: sourceTasks };
           }
 
           if (column.id === destinationId) {
-            return {
-              ...column,
-              tasks: [...column.tasks, updatedTask],
-            };
+            return { ...column, tasks: destinationTasks };
           }
 
           return column;
@@ -283,18 +287,15 @@ export default function KanbanBoard() {
     try {
       setError("");
 
-      await updateTask(taskId, {
-        board_column_id: destinationColumnId,
-        position: movedTask.position,
-      });
-
-      await Promise.all([
-        ...sourceTasks.map((item) =>
-          updateTask(item.id, { position: item.position }),
-        ),
-        ...destinationTasks
-          .filter((item) => item.id !== taskId)
-          .map((item) => updateTask(item.id, { position: item.position })),
+      await reorderTasks([
+        {
+          id: sourceColumn.id,
+          task_ids: sourceTasks.map((item) => item.id),
+        },
+        {
+          id: destinationColumnId,
+          task_ids: destinationTasks.map((item) => item.id),
+        },
       ]);
     } catch {
       setError(
@@ -342,13 +343,9 @@ export default function KanbanBoard() {
     try {
       setError("");
 
-      // Envia todas as posições da coluna: o estado local pode estar
-      // renumerado (ex.: após exclusões) sem que o banco tenha sido atualizado.
-      await Promise.all(
-        reorderedTasks.map((task) =>
-          updateTask(task.id, { position: task.position }),
-        ),
-      );
+      await reorderTasks([
+        { id: columnId, task_ids: reorderedTasks.map((task) => task.id) },
+      ]);
     } catch {
       setColumns((current) =>
         current.map((item) =>

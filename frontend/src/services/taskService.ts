@@ -47,6 +47,20 @@ export async function updateTask(
   return response.data.tarefa;
 }
 
+export interface ColumnTaskOrder {
+  id: number;
+  task_ids: number[];
+}
+
+// Salva, em uma única transação, a ordem completa das tarefas de cada coluna
+// informada. Cada coluna deve listar todas as tarefas que ficarão nela.
+export async function reorderTasks(
+  columns: ColumnTaskOrder[],
+): Promise<Task[]> {
+  const response = await api.put<TasksResponse>('/tasks/reorder', { columns });
+  return response.data.tarefas;
+}
+
 export async function deleteTask(id: number): Promise<void> {
   await api.delete(`/tasks/${id}`);
 }

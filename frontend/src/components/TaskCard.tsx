@@ -13,6 +13,38 @@ const priorityLabels: Record<Task["priority"], string> = {
   high: "Alta",
 };
 
+// Quantas das 3 barras do ícone ficam cheias: reforça a prioridade além da cor.
+const priorityLevels: Record<Task["priority"], number> = {
+  low: 1,
+  medium: 2,
+  high: 3,
+};
+
+function PriorityBars({ level }: { level: number }) {
+  return (
+    <svg
+      className="priority-bars"
+      viewBox="0 0 12 12"
+      width="12"
+      height="12"
+      aria-hidden="true"
+    >
+      {[0, 1, 2].map((index) => (
+        <rect
+          key={index}
+          x={index * 4.5}
+          y={8 - index * 3.5}
+          width="3"
+          height={4 + index * 3.5}
+          rx="1"
+          fill="currentColor"
+          opacity={index < level ? 1 : 0.3}
+        />
+      ))}
+    </svg>
+  );
+}
+
 function formatDueDate(dueDate: string) {
   // Meio-dia evita que o fuso horário mude o dia exibido.
   return new Date(`${dueDate.slice(0, 10)}T12:00:00`).toLocaleDateString(
@@ -37,7 +69,7 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
 
   return (
     <article
-      className="task-card"
+      className={`task-card task-card-${task.priority}`}
       role="button"
       tabIndex={0}
       aria-label={`Abrir a tarefa ${task.title}`}
@@ -56,8 +88,12 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
       )}
 
       <div className="task-card-meta">
-        <span className={`priority priority-${task.priority}`}>
-          <span className="priority-dot" aria-hidden="true" />
+        <span
+          className={`priority priority-${task.priority}`}
+          title={`Prioridade ${priorityLabels[task.priority].toLowerCase()}`}
+        >
+          <PriorityBars level={priorityLevels[task.priority]} />
+          <span className="visually-hidden">Prioridade </span>
           {priorityLabels[task.priority]}
         </span>
 

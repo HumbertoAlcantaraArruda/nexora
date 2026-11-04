@@ -893,28 +893,56 @@ textarea {
   font-weight: 700;
 }
 
+/* Prioridade: faixa colorida na borda esquerda do cartão + selo com
+   ícone de barras (1, 2 ou 3 cheias), para destacar sem depender só da cor. */
+.task-card-low {
+  --priority-color: var(--color-priority-low);
+  --priority-text: var(--color-priority-low-text);
+}
+
+.task-card-medium {
+  --priority-color: var(--color-priority-medium);
+  --priority-text: var(--color-priority-medium-text);
+}
+
+.task-card-high {
+  --priority-color: var(--color-priority-high);
+  --priority-text: var(--color-priority-high-text);
+}
+
+.task-card-low,
+.task-card-medium,
+.task-card-high {
+  border-left: 4px solid var(--priority-color);
+  padding-left: 14px;
+}
+
 .priority {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--priority-color) 16%, transparent);
+  color: var(--priority-text);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
 }
 
-.priority-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.priority-bars {
+  flex-shrink: 0;
 }
 
-.priority-low .priority-dot {
-  background: var(--color-priority-low);
-}
-
-.priority-medium .priority-dot {
-  background: var(--color-priority-medium);
-}
-
-.priority-high .priority-dot {
-  background: var(--color-priority-high);
+/* Texto lido por leitores de tela, invisível na tela. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .task-card-due {

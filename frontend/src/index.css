@@ -35,6 +35,10 @@
   --color-priority-low: #22c55e;
   --color-priority-medium: #f59e0b;
   --color-priority-high: #ea5555;
+  /* Texto do selo de prioridade: tons mais escuros para ler no fundo claro. */
+  --color-priority-low-text: #15803d;
+  --color-priority-medium-text: #b45309;
+  --color-priority-high-text: #c53030;
 
   --shadow-card: 0 4px 6px rgb(54 78 126 / 10%);
   --shadow-elevated: 0 10px 20px rgb(54 78 126 / 25%);
@@ -101,6 +105,10 @@
   --shadow-card: 0 4px 6px rgb(54 78 126 / 10%);
   --shadow-elevated: 0 10px 30px rgb(0 0 0 / 45%);
   --color-overlay: rgb(0 0 0 / 60%);
+
+  --color-priority-low-text: #4ade80;
+  --color-priority-medium-text: #fbbf24;
+  --color-priority-high-text: #f87171;
 
   --new-column-bg: linear-gradient(
     180deg,

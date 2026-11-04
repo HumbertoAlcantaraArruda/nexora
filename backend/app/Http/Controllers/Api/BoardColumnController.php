@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\BoardColumn;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BoardColumnController extends Controller
 {
@@ -91,14 +93,80 @@ class BoardColumnController extends Controller
     }
 
     /**
-     * Exclui uma coluna.
+     * Atualiza em lote a ordem das colunas de um quadro.
+     *
+     * A lista deve conter, na nova ordem, todas as colunas do quadro. As
+     * posições são regravadas sequencialmente a partir de zero dentro de uma
+     * transação: ou tudo é salvo, ou nada é alterado.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'board_id' => ['required', 'integer'],
+            'column_ids' => ['required', 'array', 'min:1'],
+            'column_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $board = $request->user()
+            ->boards()
+            ->findOrFail($validated['board_id']);
+
+        $submittedIds = array_map('intval', $validated['column_ids']);
+
+        $columns = DB::transaction(function () use ($board, $submittedIds) {
+            $columns = $board->columns()
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            // A lista precisa ser exatamente o conjunto de colunas do quadro:
+            // sem faltar nenhuma (posições inconsistentes) e sem colunas alheias.
+            $currentIds = $columns->keys()->all();
+            sort($currentIds);
+
+            $sortedSubmitted = $submittedIds;
+            sort($sortedSubmitted);
+
+            if ($currentIds !== $sortedSubmitted) {
+                throw ValidationException::withMessages([
+                    'column_ids' => 'Informe todas as colunas do quadro, e somente elas.',
+                ]);
+            }
+
+            foreach ($submittedIds as $position => $columnId) {
+                $column = $columns->get($columnId);
+                $column->position = $position;
+
+                if ($column->isDirty()) {
+                    $column->save();
+                }
+            }
+
+            return $board->columns()->orderBy('position')->get();
+        });
+
+        return response()->json([
+            'mensagem' => 'ok',
+            'colunas' => $columns,
+        ]);
+    }
+
+    /**
+     * Exclui uma coluna e reorganiza as posições restantes do quadro.
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
         $column = $this->findUserColumn($request, $id)
             ->firstOrFail();
 
-        $column->delete();
+        DB::transaction(function () use ($column) {
+            $column->delete();
+
+            BoardColumn::query()
+                ->where('board_id', $column->board_id)
+                ->where('position', '>', $column->position)
+                ->decrement('position');
+        });
 
         return response()->json([
             'mensagem' => 'ok',

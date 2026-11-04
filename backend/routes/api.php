@@ -16,9 +16,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Kanban
     Route::apiResource('boards', BoardController::class);
+    // Rotas de reordenação declaradas antes dos apiResource para não serem
+    // capturadas por columns/{column} e tasks/{task}.
+    Route::put('/columns/reorder', [BoardColumnController::class, 'reorder']);
     Route::apiResource('columns', BoardColumnController::class);
 
-    // Declarada antes do apiResource para não ser capturada por tasks/{task}.
     Route::put('/tasks/reorder', [TaskController::class, 'reorder']);
     Route::apiResource('tasks', TaskController::class);
 });

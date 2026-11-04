@@ -8,6 +8,7 @@ import type {
 import { COLUMN_DRAG_TYPE, isColumnDrag } from "../dragTypes";
 import { confirmDialog } from "../confirmDialog";
 import TaskCard from "./TaskCard";
+import Icon from "./Icon";
 
 interface KanbanColumnProps {
   column: Column;
@@ -342,18 +343,18 @@ export default function KanbanColumn({
               disabled={busy}
               onClick={startRenaming}
             >
-              ✎
+              <Icon name="pencil" size={16} />
             </button>
 
             <button
               type="button"
-              className="icon-button"
+              className="icon-button icon-button-danger"
               title="Excluir coluna"
               aria-label="Excluir coluna"
               disabled={busy}
               onClick={() => void handleDeleteColumn()}
             >
-              ×
+              <Icon name="trash" size={16} />
             </button>
           </div>
         </header>
@@ -452,7 +453,8 @@ export default function KanbanColumn({
           className="add-task-button"
           onClick={() => setShowForm(true)}
         >
-          + Adicionar tarefa
+          <Icon name="plus" size={16} />
+          Adicionar tarefa
         </button>
       )}
     </section>

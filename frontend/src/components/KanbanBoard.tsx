@@ -39,6 +39,7 @@ import {
 
 import KanbanColumn from "./KanbanColumn";
 import TaskEditModal, { type TaskEditData } from "./TaskEditModal";
+import Icon from "./Icon";
 
 // Busca o quadro com colunas e tarefas, ordenadas por position.
 async function fetchBoard(
@@ -604,9 +605,11 @@ export default function KanbanBoard({ boardId, onBack }: KanbanBoardProps) {
 
             <button
               type="button"
+              className="button-with-icon"
               onClick={() => setShowColumnForm((current) => !current)}
             >
-              + Nova coluna
+              <Icon name="plus" size={16} />
+              Nova coluna
             </button>
           </div>
 

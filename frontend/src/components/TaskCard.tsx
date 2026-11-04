@@ -1,4 +1,5 @@
 import type { Task } from "../types/kanban";
+import Icon from "./Icon";
 
 interface TaskCardProps {
   task: Task;
@@ -35,18 +36,18 @@ export default function TaskCard({
             disabled={disabled}
             onClick={() => onEdit(task)}
           >
-            ✎
+            <Icon name="pencil" size={15} />
           </button>
 
           <button
             type="button"
-            className="icon-button"
+            className="icon-button icon-button-danger"
             title="Excluir tarefa"
             aria-label="Excluir tarefa"
             disabled={disabled}
             onClick={() => onDelete(task.id)}
           >
-            ×
+            <Icon name="trash" size={15} />
           </button>
         </div>
       </div>

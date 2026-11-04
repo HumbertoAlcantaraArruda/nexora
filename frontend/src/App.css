@@ -195,8 +195,55 @@ button:disabled {
 }
 
 .board-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: auto;
   padding-top: 16px;
+}
+
+/* Ações do cartão de quadro: botões quadrados só com ícone. */
+.icon-action {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  background: var(--color-secondary-bg);
+  color: var(--color-secondary-text);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.icon-action:hover:not(:disabled) {
+  background: var(--color-hover);
+  color: var(--color-primary-text);
+}
+
+.icon-action-danger:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
+/* Abrir quadro: ação principal, na cor de destaque. */
+.icon-action-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+
+.icon-action-primary .icon {
+  transition: transform 0.15s ease;
+}
+
+.icon-action-primary:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  filter: brightness(1.1);
+}
+
+.icon-action-primary:hover:not(:disabled) .icon {
+  transform: translateX(2px);
 }
 
 .danger-button {
@@ -396,14 +443,40 @@ button:disabled {
   color: var(--color-priority-high-text);
 }
 
+/* Botão só com ícone (colunas e tarefas). */
 .icon-button {
-  padding: 3px 8px;
+  display: inline-grid;
+  place-items: center;
+  padding: 6px;
+  border-radius: 6px;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 20px;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.icon-button-danger:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
+/* Botão com ícone + texto. */
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .add-task-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
   margin-top: 12px;
   padding: 9px;
@@ -513,13 +586,6 @@ button:disabled {
   gap: 2px;
 }
 
-.task-card-actions .icon-button {
-  font-size: 16px;
-}
-
-.column-actions .icon-button:first-child {
-  font-size: 16px;
-}
 
 .column-rename-form {
   display: flex;

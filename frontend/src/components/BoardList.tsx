@@ -9,6 +9,7 @@ import {
 import { getApiErrorMessage } from "../services/apiErrors";
 import { confirmDialog } from "../confirmDialog";
 import BoardEditModal, { type BoardEditData } from "./BoardEditModal";
+import Icon from "./Icon";
 
 interface BoardListProps {
   onOpenBoard: (boardId: number) => void;
@@ -229,31 +230,38 @@ export default function BoardList({ onOpenBoard }: BoardListProps) {
                 {plural(board.tasks_count ?? 0, "tarefa", "tarefas")}
               </small>
 
-              <div className="form-actions board-card-actions">
+              <div className="board-card-actions">
                 <button
                   type="button"
+                  className="icon-action icon-action-primary"
                   onClick={() => onOpenBoard(board.id)}
                   disabled={saving}
+                  title="Abrir quadro"
+                  aria-label={`Abrir o quadro ${board.name}`}
                 >
-                  Abrir quadro
+                  <Icon name="arrow-right" />
                 </button>
 
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="icon-action"
                   onClick={() => startEditing(board)}
                   disabled={saving}
+                  title="Editar quadro"
+                  aria-label={`Editar o quadro ${board.name}`}
                 >
-                  Editar
+                  <Icon name="pencil" />
                 </button>
 
                 <button
                   type="button"
-                  className="secondary-button danger-button"
+                  className="icon-action icon-action-danger"
                   onClick={() => void handleDeleteBoard(board)}
                   disabled={saving}
+                  title="Excluir quadro"
+                  aria-label={`Excluir o quadro ${board.name}`}
                 >
-                  Excluir
+                  <Icon name="trash" />
                 </button>
               </div>
             </article>

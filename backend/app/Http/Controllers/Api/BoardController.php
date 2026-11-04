@@ -35,7 +35,7 @@ class BoardController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $board = $request->user()
@@ -72,7 +72,7 @@ class BoardController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['sometimes', 'nullable', 'string'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ]);
 
         $board->update($validated);

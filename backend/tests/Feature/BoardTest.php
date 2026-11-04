@@ -125,6 +125,89 @@ class BoardTest extends TestCase
         $this->assertModelExists($board);
     }
 
+    public function test_edits_board_name_and_description(): void
+    {
+        $board = $this->boardWithContent($this->user);
+
+        Sanctum::actingAs($this->user);
+
+        $this->patchJson("/api/boards/{$board->id}", [
+            'name' => 'Nome novo',
+            'description' => 'Descrição nova',
+        ])
+            ->assertOk()
+            ->assertJsonPath('quadro.name', 'Nome novo')
+            ->assertJsonPath('quadro.description', 'Descrição nova');
+
+        $board->refresh();
+
+        $this->assertSame('Nome novo', $board->name);
+        $this->assertSame('Descrição nova', $board->description);
+        // Editar não afeta colunas e tarefas.
+        $this->assertSame(2, $board->columns()->count());
+        $this->assertSame(2, $board->tasks()->count());
+    }
+
+    public function test_clears_board_description(): void
+    {
+        $board = Board::create([
+            'user_id' => $this->user->id,
+            'name' => 'Quadro',
+            'description' => 'Antiga',
+        ]);
+
+        Sanctum::actingAs($this->user);
+
+        $this->patchJson("/api/boards/{$board->id}", ['description' => ''])
+            ->assertOk();
+
+        $this->assertNull($board->refresh()->description);
+        $this->assertSame('Quadro', $board->name);
+    }
+
+    public function test_rejects_invalid_board_data(): void
+    {
+        $board = $this->boardWithContent($this->user, 'Original');
+
+        Sanctum::actingAs($this->user);
+
+        $this->patchJson("/api/boards/{$board->id}", ['name' => '   '])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('name');
+
+        $this->patchJson("/api/boards/{$board->id}", ['name' => str_repeat('a', 256)])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('name');
+
+        $this->patchJson("/api/boards/{$board->id}", ['description' => str_repeat('a', 1001)])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('description');
+
+        $this->assertSame('Original', $board->refresh()->name);
+    }
+
+    public function test_cannot_edit_board_of_another_user(): void
+    {
+        $board = $this->boardWithContent(User::factory()->create(), 'Alheio');
+
+        Sanctum::actingAs($this->user);
+
+        $this->patchJson("/api/boards/{$board->id}", ['name' => 'Invasão'])
+            ->assertNotFound();
+
+        $this->assertSame('Alheio', $board->refresh()->name);
+    }
+
+    public function test_editing_board_requires_authentication(): void
+    {
+        $board = $this->boardWithContent($this->user, 'Original');
+
+        $this->patchJson("/api/boards/{$board->id}", ['name' => 'Sem login'])
+            ->assertUnauthorized();
+
+        $this->assertSame('Original', $board->refresh()->name);
+    }
+
     public function test_creates_board_and_validates_name(): void
     {
         Sanctum::actingAs($this->user);

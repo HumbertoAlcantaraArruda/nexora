@@ -160,7 +160,7 @@ export default function TaskFormModal({
         </div>
 
         <label className="form-field">
-          Status
+          Coluna
           <select
             value={columnId}
             onChange={(event) => setColumnId(Number(event.target.value))}

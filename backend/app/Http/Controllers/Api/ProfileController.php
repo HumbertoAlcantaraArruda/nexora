@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\AvatarRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ProfileController extends Controller
 {
-    private const AVATAR_DISK = 'public';
+    private const AVATAR_DISK = AvatarRules::DISK;
 
     /**
      * Atualiza nome e/ou e-mail. Trocar o e-mail (que é o login) exige a
@@ -70,25 +71,13 @@ class ProfileController extends Controller
     public function updateAvatar(Request $request): JsonResponse
     {
         $request->validate([
-            'avatar' => [
-                'required',
-                'file',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:2048',
-                'dimensions:max_width=4000,max_height=4000',
-            ],
-        ], [
-            'avatar.image' => 'Envie uma imagem.',
-            'avatar.mimes' => 'A foto deve ser JPG, PNG ou WEBP.',
-            'avatar.max' => 'A foto deve ter no máximo 2 MB.',
-            'avatar.dimensions' => 'A foto deve ter no máximo 4000 × 4000 pixels.',
-        ]);
+            'avatar' => ['required', ...AvatarRules::rules()],
+        ], AvatarRules::messages());
 
         $user = $request->user();
         $previous = $user->avatar_path;
 
-        $user->avatar_path = $request->file('avatar')->store('avatars', self::AVATAR_DISK);
+        $user->avatar_path = $request->file('avatar')->store(AvatarRules::DIRECTORY, self::AVATAR_DISK);
         $user->save();
 
         if ($previous) {

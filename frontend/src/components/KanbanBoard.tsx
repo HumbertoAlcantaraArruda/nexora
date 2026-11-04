@@ -13,6 +13,7 @@ import {
   createColumn,
   deleteColumn,
   getColumns,
+  updateColumn,
 } from "../services/columnService";
 
 import {
@@ -20,6 +21,7 @@ import {
   deleteTask,
   getTasks,
   reorderTasks,
+  updateTask,
 } from "../services/taskService";
 
 import {
@@ -28,6 +30,7 @@ import {
 } from "../services/apiErrors";
 
 import KanbanColumn from "./KanbanColumn";
+import TaskEditModal, { type TaskEditData } from "./TaskEditModal";
 
 // Busca colunas e tarefas do quadro, ordenadas por position.
 async function fetchBoardColumns(boardId: number): Promise<Column[]> {
@@ -54,6 +57,7 @@ export default function KanbanBoard() {
   const [columnName, setColumnName] = useState("");
   const [showColumnForm, setShowColumnForm] = useState(false);
   const [moveTask, setMoveTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [targetColumnId, setTargetColumnId] = useState("");
   const [dragState, setDragState] = useState<TaskDragState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -213,6 +217,44 @@ export default function KanbanBoard() {
             .filter((task) => task.id !== taskId)
             .map((task, position) => ({ ...task, position })),
         })),
+      );
+    });
+  }
+
+  function handleOpenEditTask(task: Task) {
+    setError("");
+    setEditingTask(task);
+  }
+
+  async function handleEditTask(
+    taskId: number,
+    data: TaskEditData,
+  ): Promise<boolean> {
+    return runMutation("Não foi possível salvar a tarefa.", async () => {
+      const updated = await updateTask(taskId, data);
+
+      setColumns((current) =>
+        current.map((column) => ({
+          ...column,
+          tasks: column.tasks.map((task) =>
+            task.id === taskId ? { ...task, ...updated } : task,
+          ),
+        })),
+      );
+    });
+  }
+
+  async function handleRenameColumn(
+    columnId: number,
+    name: string,
+  ): Promise<boolean> {
+    return runMutation("Não foi possível renomear a coluna.", async () => {
+      const updated = await updateColumn(columnId, { name });
+
+      setColumns((current) =>
+        current.map((column) =>
+          column.id === columnId ? { ...column, name: updated.name } : column,
+        ),
       );
     });
   }
@@ -498,6 +540,8 @@ export default function KanbanBoard() {
                 onCreateTask={handleCreateTask}
                 onDeleteTask={handleDeleteTask}
                 onMoveTask={setMoveTask}
+                onEditTask={handleOpenEditTask}
+                onRenameColumn={handleRenameColumn}
                 onDropTask={handleDropTask}
                 onReorderTask={handleReorderTask}
                 onDeleteColumn={handleDeleteColumn}
@@ -516,6 +560,16 @@ export default function KanbanBoard() {
             )}
           </div>
         </>
+      )}
+
+      {editingTask && (
+        <TaskEditModal
+          task={editingTask}
+          saving={saving}
+          error={error}
+          onSave={(data) => handleEditTask(editingTask.id, data)}
+          onCancel={() => setEditingTask(null)}
+        />
       )}
 
       {moveTask && (

@@ -20,6 +20,8 @@ interface KanbanColumnProps {
   ) => Promise<boolean>;
   onDeleteTask: (id: number) => Promise<void>;
   onMoveTask: (task: Task) => void;
+  onEditTask: (task: Task) => void;
+  onRenameColumn: (id: number, name: string) => Promise<boolean>;
   onDropTask: (
     taskId: number,
     destinationColumnId: number,
@@ -43,6 +45,8 @@ export default function KanbanColumn({
   onCreateTask,
   onDeleteTask,
   onMoveTask,
+  onEditTask,
+  onRenameColumn,
   onDropTask,
   onReorderTask,
   onDeleteColumn,
@@ -57,6 +61,9 @@ export default function KanbanColumn({
   const [priority, setPriority] = useState<Task["priority"]>("medium");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameError, setNameError] = useState("");
 
   const isDragOver = dragState?.overColumnId === column.id;
   const isReordering =
@@ -98,6 +105,44 @@ export default function KanbanColumn({
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  function startRenaming() {
+    setNameDraft(column.name);
+    setNameError("");
+    setEditingName(true);
+  }
+
+  function cancelRenaming() {
+    setEditingName(false);
+    setNameError("");
+  }
+
+  async function handleRename(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const name = nameDraft.trim();
+
+    // Validação no frontend para feedback imediato; o backend valida novamente.
+    if (!name) {
+      setNameError("Informe o nome da coluna.");
+      return;
+    }
+
+    if (name.length > 255) {
+      setNameError("O nome deve ter no máximo 255 caracteres.");
+      return;
+    }
+
+    if (name === column.name) {
+      cancelRenaming();
+      return;
+    }
+
+    // Em caso de falha mantém o campo aberto; a mensagem aparece no quadro.
+    if (await onRenameColumn(column.id, name)) {
+      cancelRenaming();
     }
   }
 
@@ -182,32 +227,86 @@ export default function KanbanColumn({
 
   return (
     <section className="kanban-column">
-      <header className="column-header">
-        <div>
-          <h2>{column.name}</h2>
-          <span className="task-count">
-            {column.tasks.length} tarefas
-          </span>
-        </div>
-
-        <button
-          type="button"
-          className="icon-button"
-          title="Excluir coluna"
-          disabled={busy}
-          onClick={() => {
-            if (
-              window.confirm(
-                `Excluir a coluna "${column.name}" e suas tarefas?`,
-              )
-            ) {
-              void onDeleteColumn(column.id);
-            }
-          }}
+      {editingName ? (
+        <form
+          className="column-rename-form"
+          onSubmit={(event) => void handleRename(event)}
+          noValidate
         >
-          ×
-        </button>
-      </header>
+          <input
+            aria-label="Nome da coluna"
+            value={nameDraft}
+            onChange={(event) => setNameDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") cancelRenaming();
+            }}
+            maxLength={255}
+            autoFocus
+          />
+
+          {nameError && (
+            <p className="auth-error" role="alert">
+              {nameError}
+            </p>
+          )}
+
+          <div className="form-actions">
+            <button type="submit" disabled={busy}>
+              {busy ? "Salvando..." : "Salvar"}
+            </button>
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={cancelRenaming}
+              disabled={busy}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ) : (
+        <header className="column-header">
+          <div>
+            <h2>{column.name}</h2>
+            <span className="task-count">
+              {column.tasks.length} tarefas
+            </span>
+          </div>
+
+          <div className="column-actions">
+            <button
+              type="button"
+              className="icon-button"
+              title="Renomear coluna"
+              aria-label="Renomear coluna"
+              disabled={busy}
+              onClick={startRenaming}
+            >
+              ✎
+            </button>
+
+            <button
+              type="button"
+              className="icon-button"
+              title="Excluir coluna"
+              aria-label="Excluir coluna"
+              disabled={busy}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Excluir a coluna "${column.name}" e suas tarefas?`,
+                  )
+                ) {
+                  void onDeleteColumn(column.id);
+                }
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </header>
+      )}
 
       <div
         className={[
@@ -243,6 +342,7 @@ export default function KanbanColumn({
               disabled={busy}
               onDelete={(id) => void onDeleteTask(id)}
               onMove={onMoveTask}
+              onEdit={onEditTask}
             />
           </div>
         ))}

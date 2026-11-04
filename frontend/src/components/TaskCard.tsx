@@ -5,6 +5,7 @@ interface TaskCardProps {
   disabled?: boolean;
   onDelete: (id: number) => void;
   onMove: (task: Task) => void;
+  onEdit: (task: Task) => void;
 }
 
 const priorityLabels: Record<Task["priority"], string> = {
@@ -18,6 +19,7 @@ export default function TaskCard({
   disabled = false,
   onDelete,
   onMove,
+  onEdit,
 }: TaskCardProps) {
   return (
     <article className="task-card">
@@ -26,15 +28,29 @@ export default function TaskCard({
           {priorityLabels[task.priority]}
         </span>
 
-        <button
-          type="button"
-          className="icon-button"
-          title="Excluir tarefa"
-          disabled={disabled}
-          onClick={() => onDelete(task.id)}
-        >
-          ×
-        </button>
+        <div className="task-card-actions">
+          <button
+            type="button"
+            className="icon-button"
+            title="Editar tarefa"
+            aria-label="Editar tarefa"
+            disabled={disabled}
+            onClick={() => onEdit(task)}
+          >
+            ✎
+          </button>
+
+          <button
+            type="button"
+            className="icon-button"
+            title="Excluir tarefa"
+            aria-label="Excluir tarefa"
+            disabled={disabled}
+            onClick={() => onDelete(task.id)}
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       <h3>{task.title}</h3>

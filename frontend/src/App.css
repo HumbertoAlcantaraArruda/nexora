@@ -168,7 +168,8 @@ button:disabled {
 
 .board-selector select,
 .task-form select,
-.move-modal select {
+.move-modal select,
+.edit-modal select {
   padding: 10px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -314,7 +315,8 @@ button:disabled {
   margin-top: 14px;
 }
 
-.task-form textarea {
+.task-form textarea,
+.edit-modal textarea {
   resize: vertical;
   padding: 10px;
   border: 1px solid #cbd5e1;
@@ -366,6 +368,51 @@ button:disabled {
   flex-direction: column;
   gap: 8px;
   margin: 20px 0;
+}
+
+/* Edição de tarefa: reaproveita o modal de mover, com mais campos. */
+.edit-modal {
+  max-width: 460px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.edit-modal label {
+  margin: 14px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.edit-modal .auth-error {
+  margin: 0 0 14px;
+}
+
+/* Ações agrupadas nos cabeçalhos de coluna e de cartão. */
+.column-actions,
+.task-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.task-card-actions .icon-button {
+  font-size: 16px;
+}
+
+.column-actions .icon-button:first-child {
+  font-size: 16px;
+}
+
+.column-rename-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.column-rename-form .auth-error {
+  margin: 0;
+  font-size: 13px;
 }
 
 @media (max-width: 700px) {

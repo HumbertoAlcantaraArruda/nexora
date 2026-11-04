@@ -3,10 +3,12 @@ import {
   createBoard,
   deleteBoard,
   getBoards,
+  updateBoard,
   type Board,
 } from "../services/boardService";
 import { getApiErrorMessage } from "../services/apiErrors";
 import { confirmDialog } from "../confirmDialog";
+import BoardEditModal, { type BoardEditData } from "./BoardEditModal";
 
 interface BoardListProps {
   onOpenBoard: (boardId: number) => void;
@@ -23,6 +25,10 @@ export default function BoardList({ onOpenBoard }: BoardListProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Quadro em edição no modal (null = modal fechado).
+  const [editingBoard, setEditingBoard] = useState<Board | null>(null);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     async function loadBoards() {
@@ -66,6 +72,53 @@ export default function BoardList({ onOpenBoard }: BoardListProps) {
       setDescription("");
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível criar o quadro."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function startEditing(board: Board) {
+    setEditingBoard(board);
+    setEditError("");
+    setError("");
+  }
+
+  function cancelEditing() {
+    setEditingBoard(null);
+    setEditError("");
+  }
+
+  // Dados já validados e normalizados pelo modal.
+  async function handleUpdateBoard(data: BoardEditData): Promise<boolean> {
+    if (!editingBoard) return false;
+
+    const board = editingBoard;
+
+    if (data.name === board.name && data.description === board.description) {
+      cancelEditing();
+      return true;
+    }
+
+    setSaving(true);
+    setEditError("");
+
+    try {
+      const updated = await updateBoard(board.id, data);
+
+      // A resposta não traz as contagens; preserva as que já estavam na tela.
+      setBoards((current) =>
+        current.map((item) =>
+          item.id === board.id
+            ? { ...item, name: updated.name, description: updated.description }
+            : item,
+        ),
+      );
+      cancelEditing();
+      return true;
+    } catch (err) {
+      // Mantém o modal aberto para nova tentativa.
+      setEditError(getApiErrorMessage(err, "Não foi possível salvar o quadro."));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -187,6 +240,15 @@ export default function BoardList({ onOpenBoard }: BoardListProps) {
 
                 <button
                   type="button"
+                  className="secondary-button"
+                  onClick={() => startEditing(board)}
+                  disabled={saving}
+                >
+                  Editar
+                </button>
+
+                <button
+                  type="button"
                   className="secondary-button danger-button"
                   onClick={() => void handleDeleteBoard(board)}
                   disabled={saving}
@@ -198,6 +260,16 @@ export default function BoardList({ onOpenBoard }: BoardListProps) {
           ))}
         </div>
       </section>
+
+      {editingBoard && (
+        <BoardEditModal
+          board={editingBoard}
+          saving={saving}
+          error={editError}
+          onSave={handleUpdateBoard}
+          onCancel={cancelEditing}
+        />
+      )}
     </main>
   );
 }

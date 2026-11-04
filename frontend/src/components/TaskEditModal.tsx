@@ -75,7 +75,10 @@ export default function TaskEditModal({
           Título
           <input
             value={title}
-            onChange={(event) => setTitle(event.target.value)}
+            onChange={(event) => {
+              setTitle(event.target.value);
+              setValidationError("");
+            }}
             maxLength={TITLE_MAX}
             required
             autoFocus
@@ -86,7 +89,10 @@ export default function TaskEditModal({
           Descrição
           <textarea
             value={description}
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={(event) => {
+              setDescription(event.target.value);
+              setValidationError("");
+            }}
             maxLength={DESCRIPTION_MAX}
             rows={4}
           />

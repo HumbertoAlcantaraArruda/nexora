@@ -7,6 +7,16 @@ O projeto é dividido em duas partes:
 - **`backend/`** — API REST em **Laravel** (PHP), com autenticação por token e banco **MySQL**.
 - **`frontend/`** — aplicação web em **React + TypeScript**, gerada com **Vite**.
 
+## Demonstração
+
+Movendo uma tarefa entre colunas: a ordem é salva no servidor ("Salvando...") e, se algo falhar, a tela volta ao estado anterior.
+
+![Arrastando uma tarefa entre colunas](docs/images/mover-tarefa.gif)
+
+| Meus quadros (tema escuro) | Quadro com prioridades e responsáveis (tema claro) |
+|---|---|
+| ![Tela Meus quadros no tema escuro](docs/images/meus-quadros.png) | ![Quadro com colunas, tarefas, prioridades e responsáveis no tema claro](docs/images/quadro-tema-claro.png) |
+
 ---
 
 ## Sumário

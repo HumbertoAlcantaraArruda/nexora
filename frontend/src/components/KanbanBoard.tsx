@@ -1,11 +1,20 @@
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import type {
+  ColumnDragState,
   KanbanBoard as Board,
   KanbanColumn as Column,
   Task,
   TaskDragState,
 } from "../types/kanban";
+import { isColumnDrag } from "../dragTypes";
 
 import { getBoards } from "../services/boardService";
 
@@ -13,6 +22,7 @@ import {
   createColumn,
   deleteColumn,
   getColumns,
+  reorderColumns,
   updateColumn,
 } from "../services/columnService";
 
@@ -58,6 +68,7 @@ export default function KanbanBoard() {
   const [showColumnForm, setShowColumnForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [dragState, setDragState] = useState<TaskDragState | null>(null);
+  const [columnDrag, setColumnDrag] = useState<ColumnDragState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -424,6 +435,136 @@ export default function KanbanBoard() {
     );
   }
 
+  // ---- Reordenação de colunas ----------------------------------------------
+
+  // Retorna a posição (0..n) entre as colunas onde o item foi solto,
+  // comparando o cursor com o ponto médio horizontal de cada coluna.
+  function getColumnInsertIndex(container: HTMLElement, clientX: number) {
+    const sections = Array.from(
+      container.querySelectorAll<HTMLElement>(":scope > .kanban-column"),
+    );
+
+    const index = sections.findIndex((section) => {
+      const rect = section.getBoundingClientRect();
+      return clientX < rect.left + rect.width / 2;
+    });
+
+    return index === -1 ? sections.length : index;
+  }
+
+  function handleColumnDragStart(columnId: number) {
+    setColumnDrag({ columnId, insertIndex: null });
+  }
+
+  function handleColumnDragEnd() {
+    setColumnDrag(null);
+  }
+
+  function handleColumnsDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!isColumnDrag(event)) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    const insertIndex = getColumnInsertIndex(
+      event.currentTarget,
+      event.clientX,
+    );
+
+    // dragover dispara continuamente; só atualiza quando algo muda.
+    setColumnDrag((current) =>
+      current && current.insertIndex !== insertIndex
+        ? { ...current, insertIndex }
+        : current,
+    );
+  }
+
+  function handleColumnsDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (!isColumnDrag(event)) return;
+
+    const nextTarget = event.relatedTarget;
+
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+
+    setColumnDrag((current) =>
+      current ? { ...current, insertIndex: null } : current,
+    );
+  }
+
+  async function handleColumnsDrop(event: DragEvent<HTMLDivElement>) {
+    if (!isColumnDrag(event)) return;
+
+    event.preventDefault();
+
+    const insertIndex = getColumnInsertIndex(
+      event.currentTarget,
+      event.clientX,
+    );
+    const draggedId = columnDrag?.columnId;
+
+    setColumnDrag(null);
+
+    if (draggedId !== undefined) {
+      await handleReorderColumns(draggedId, insertIndex);
+    }
+  }
+
+  async function handleReorderColumns(columnId: number, insertIndex: number) {
+    if (selectedBoardId === null) return;
+
+    const fromIndex = columns.findIndex((column) => column.id === columnId);
+
+    if (fromIndex === -1) return;
+
+    // Ao remover a coluna da origem, os índices posteriores recuam uma casa.
+    const toIndex = insertIndex > fromIndex ? insertIndex - 1 : insertIndex;
+
+    if (toIndex === fromIndex) return;
+
+    const reordered = [...columns];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    const reorderedColumns = reordered.map((column, position) => ({
+      ...column,
+      position,
+    }));
+
+    const snapshot = columns;
+
+    await runMutation(
+      "Não foi possível salvar a nova ordem das colunas.",
+      async () => {
+        // Atualiza a interface imediatamente; desfeito em caso de falha.
+        setColumns(reorderedColumns);
+
+        await reorderColumns(
+          selectedBoardId,
+          reorderedColumns.map((column) => column.id),
+        );
+      },
+      () => setColumns(snapshot),
+    );
+  }
+
+  // Indicador de inserção entre colunas; omitido quando soltar ali não
+  // mudaria a ordem (logo antes ou logo depois da própria coluna).
+  const draggedColumnIndex = columnDrag
+    ? columns.findIndex((column) => column.id === columnDrag.columnId)
+    : -1;
+  const columnDropIndex =
+    columnDrag?.insertIndex != null &&
+    columnDrag.insertIndex !== draggedColumnIndex &&
+    columnDrag.insertIndex !== draggedColumnIndex + 1
+      ? columnDrag.insertIndex
+      : null;
+
+  const columnDropIndicator = (
+    <div className="column-drop-indicator" aria-hidden="true" />
+  );
+
   if (loading) {
     return <p className="loading-screen">Carregando quadros...</p>;
   }
@@ -512,26 +653,38 @@ export default function KanbanBoard() {
             </form>
           )}
 
-          <div className="kanban-columns">
-            {columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                column={column}
-                busy={saving}
-                onCreateTask={handleCreateTask}
-                onDeleteTask={handleDeleteTask}
-                onEditTask={handleOpenEditTask}
-                onRenameColumn={handleRenameColumn}
-                onDropTask={handleDropTask}
-                onReorderTask={handleReorderTask}
-                onDeleteColumn={handleDeleteColumn}
-                dragState={dragState}
-                onTaskDragStart={handleTaskDragStart}
-                onTaskDragOver={handleTaskDragOver}
-                onTaskDragLeave={handleTaskDragLeave}
-                onTaskDragEnd={handleTaskDragEnd}
-              />
+          <div
+            className="kanban-columns"
+            onDragOver={handleColumnsDragOver}
+            onDragLeave={handleColumnsDragLeave}
+            onDrop={(event) => void handleColumnsDrop(event)}
+          >
+            {columns.map((column, index) => (
+              <Fragment key={column.id}>
+                {columnDropIndex === index && columnDropIndicator}
+                <KanbanColumn
+                  column={column}
+                  busy={saving}
+                  onCreateTask={handleCreateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onEditTask={handleOpenEditTask}
+                  onRenameColumn={handleRenameColumn}
+                  onDropTask={handleDropTask}
+                  onReorderTask={handleReorderTask}
+                  onDeleteColumn={handleDeleteColumn}
+                  dragState={dragState}
+                  onTaskDragStart={handleTaskDragStart}
+                  onTaskDragOver={handleTaskDragOver}
+                  onTaskDragLeave={handleTaskDragLeave}
+                  onTaskDragEnd={handleTaskDragEnd}
+                  isColumnDragging={columnDrag?.columnId === column.id}
+                  onColumnDragStart={handleColumnDragStart}
+                  onColumnDragEnd={handleColumnDragEnd}
+                />
+              </Fragment>
             ))}
+
+            {columnDropIndex === columns.length && columnDropIndicator}
 
             {columns.length === 0 && (
               <p>

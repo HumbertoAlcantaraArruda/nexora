@@ -5,6 +5,7 @@ import type {
   Task,
   TaskDragState,
 } from "../types/kanban";
+import { COLUMN_DRAG_TYPE, isColumnDrag } from "../dragTypes";
 import TaskCard from "./TaskCard";
 
 interface KanbanColumnProps {
@@ -36,6 +37,9 @@ interface KanbanColumnProps {
   onTaskDragOver: (columnId: number, insertIndex: number) => void;
   onTaskDragLeave: (columnId: number) => void;
   onTaskDragEnd: () => void;
+  isColumnDragging: boolean;
+  onColumnDragStart: (columnId: number) => void;
+  onColumnDragEnd: () => void;
 }
 
 export default function KanbanColumn({
@@ -53,6 +57,9 @@ export default function KanbanColumn({
   onTaskDragOver,
   onTaskDragLeave,
   onTaskDragEnd,
+  isColumnDragging,
+  onColumnDragStart,
+  onColumnDragEnd,
 }: KanbanColumnProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -156,7 +163,31 @@ export default function KanbanColumn({
     window.setTimeout(() => onTaskDragStart(taskId, column.id), 0);
   }
 
+  // O cabeçalho é a alça de arraste da coluna; a imagem de arraste mostra a
+  // coluna inteira. A ordem é tratada pelo quadro (KanbanBoard).
+  function handleColumnDragStart(event: DragEvent<HTMLElement>) {
+    event.dataTransfer.setData(COLUMN_DRAG_TYPE, String(column.id));
+    event.dataTransfer.effectAllowed = "move";
+
+    const section = event.currentTarget.closest(".kanban-column");
+
+    if (section instanceof HTMLElement) {
+      const rect = section.getBoundingClientRect();
+      event.dataTransfer.setDragImage(
+        section,
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+    }
+
+    window.setTimeout(() => onColumnDragStart(column.id), 0);
+  }
+
+  // Arrastes de coluna são ignorados pela lista de tarefas e seguem
+  // (por propagação) para a área de colunas do quadro.
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    if (isColumnDrag(event)) return;
+
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
 
@@ -167,6 +198,8 @@ export default function KanbanColumn({
   }
 
   function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (isColumnDrag(event)) return;
+
     const nextTarget = event.relatedTarget;
 
     if (
@@ -180,6 +213,8 @@ export default function KanbanColumn({
   }
 
   async function handleDrop(event: DragEvent<HTMLDivElement>) {
+    if (isColumnDrag(event)) return;
+
     event.preventDefault();
 
     // O cartão de origem pode ser desmontado ao mudar de coluna, e aí o
@@ -224,7 +259,9 @@ export default function KanbanColumn({
   }
 
   return (
-    <section className="kanban-column">
+    <section
+      className={`kanban-column${isColumnDragging ? " kanban-column-dragging" : ""}`}
+    >
       {editingName ? (
         <form
           className="column-rename-form"
@@ -264,7 +301,13 @@ export default function KanbanColumn({
           </div>
         </form>
       ) : (
-        <header className="column-header">
+        <header
+          className="column-header"
+          draggable={!busy}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={onColumnDragEnd}
+          title="Arraste para reordenar a coluna"
+        >
           <div>
             <h2>{column.name}</h2>
             <span className="task-count">

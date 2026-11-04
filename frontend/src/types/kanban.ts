@@ -26,6 +26,13 @@ export interface TaskDragState {
   insertIndex: number | null;
 }
 
+// Estado do arraste de uma coluna: qual coluna e o ponto de inserção (0..n)
+// entre as colunas atuais.
+export interface ColumnDragState {
+  columnId: number;
+  insertIndex: number | null;
+}
+
 export interface KanbanBoard {
   id: number;
   user_id: number;

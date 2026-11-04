@@ -33,6 +33,19 @@ export async function updateColumn(
   return response.data.coluna;
 }
 
+// Salva, em uma única transação, a ordem completa das colunas do quadro.
+// A lista deve conter todas as colunas do quadro, na nova ordem.
+export async function reorderColumns(
+  boardId: number,
+  columnIds: number[],
+): Promise<KanbanColumn[]> {
+  const response = await api.put<ColumnsResponse>('/columns/reorder', {
+    board_id: boardId,
+    column_ids: columnIds,
+  });
+  return response.data.colunas;
+}
+
 export async function deleteColumn(id: number): Promise<void> {
   await api.delete(`/columns/${id}`);
 }

@@ -200,7 +200,11 @@ button:disabled {
   align-items: flex-start;
   gap: 20px;
   overflow-x: auto;
-  padding: 8px 2px 24px;
+  /* Recuo extra à esquerda (compensado pela margem negativa) para o
+     indicador de inserção antes da primeira coluna não ser cortado pelo
+     overflow; as colunas permanecem na mesma posição. */
+  margin-left: -12px;
+  padding: 8px 2px 24px 14px;
 }
 
 .kanban-column {
@@ -517,6 +521,38 @@ button:disabled {
   transition:
     background-color 0.2s ease,
     outline-color 0.2s ease;
+}
+
+/* ---- Reordenação de colunas ---- */
+
+/* O cabeçalho é a alça de arraste da coluna. */
+.column-header[draggable="true"] {
+  cursor: grab;
+}
+
+.column-header[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Coluna sendo arrastada: permanece no lugar, esmaecida e tracejada. */
+.kanban-column-dragging {
+  opacity: 0.45;
+  border-style: dashed;
+  border-color: var(--color-primary);
+}
+
+/* Linha vertical que indica onde a coluna será inserida. As margens
+   negativas compensam a largura e o gap extra do flex, então o layout das
+   colunas não se desloca enquanto o mouse se move. */
+.column-drop-indicator {
+  flex: 0 0 4px;
+  align-self: stretch;
+  min-height: 120px;
+  margin: 0 -12px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+  pointer-events: none;
 }
 
 /* Tarefa vinda de outra coluna: destaque forte da coluna de destino. */

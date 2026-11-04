@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Concerns\AuthorizesBoardAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Board;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -65,7 +66,10 @@ class BoardController extends Controller
 
         $board = Board::query()
             ->accessibleBy($user)
-            ->with(['columns.tasks', ...$this->currentMembership($user)])
+            ->with([
+                'columns.tasks.'.Task::ASSIGNEE_COLUMNS,
+                ...$this->currentMembership($user),
+            ])
             ->findOrFail($id);
 
         return response()->json([

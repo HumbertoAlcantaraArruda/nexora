@@ -19,6 +19,14 @@ class TaskController extends Controller
     use AuthorizesBoardAccess;
 
     /**
+     * Responsável: qualquer usuário da plataforma, ou nulo (sem responsável).
+     * Ser responsável não dá acesso ao quadro.
+     */
+    private const ASSIGNEE_RULES = ['sometimes', 'nullable', 'integer', 'exists:users,id'];
+
+    private const ASSIGNEE_MESSAGES = ['assignee_id.exists' => 'Usuário não encontrado.'];
+
+    /**
      * Lista as tarefas dos quadros que o usuário acessa.
      */
     public function index(Request $request): JsonResponse
@@ -57,7 +65,8 @@ class TaskController extends Controller
             ],
             'due_date' => ['nullable', 'date'],
             'position' => ['sometimes', 'integer', 'min:0'],
-        ]);
+            'assignee_id' => self::ASSIGNEE_RULES,
+        ], self::ASSIGNEE_MESSAGES);
 
         $column = $this->findAccessibleColumn($request, $validated['board_column_id']);
 
@@ -69,11 +78,12 @@ class TaskController extends Controller
             'priority' => $validated['priority'] ?? 'medium',
             'due_date' => $validated['due_date'] ?? null,
             'position' => $validated['position'] ?? 0,
+            'assignee_id' => $validated['assignee_id'] ?? null,
         ]);
 
         return response()->json([
             'mensagem' => 'ok',
-            'tarefa' => $task,
+            'tarefa' => $task->load(Task::ASSIGNEE_COLUMNS),
         ], 201);
     }
 
@@ -83,7 +93,7 @@ class TaskController extends Controller
     public function show(Request $request, string $id): JsonResponse
     {
         $task = $this->findUserTask($request, $id)
-            ->with('column.board')
+            ->with(['column.board', Task::ASSIGNEE_COLUMNS])
             ->firstOrFail();
 
         return response()->json([
@@ -119,7 +129,8 @@ class TaskController extends Controller
                 'integer',
                 'exists:board_columns,id',
             ],
-        ]);
+            'assignee_id' => self::ASSIGNEE_RULES,
+        ], self::ASSIGNEE_MESSAGES);
 
         if (isset($validated['board_column_id'])) {
             $target = $this->findAccessibleColumn($request, $validated['board_column_id']);
@@ -131,7 +142,7 @@ class TaskController extends Controller
 
         return response()->json([
             'mensagem' => 'ok',
-            'tarefa' => $task->refresh(),
+            'tarefa' => $task->refresh()->load(Task::ASSIGNEE_COLUMNS),
         ]);
     }
 

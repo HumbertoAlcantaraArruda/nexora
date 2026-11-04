@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BoardController;
 use App\Http\Controllers\Api\BoardMemberController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -15,6 +16,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Login
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+
+    // Usuários da plataforma (para escolher o responsável de uma tarefa)
+    Route::get('/users', [UserController::class, 'index']);
 
     // Configurações do usuário
     Route::patch('/user', [ProfileController::class, 'update']);

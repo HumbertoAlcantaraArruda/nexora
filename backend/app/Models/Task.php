@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'board_column_id',
+    'assignee_id',
     'title',
     'description',
     'priority',
@@ -16,8 +17,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Task extends Model
 {
+    // Dados do responsável exibidos na API: nome, e-mail e foto.
+    public const ASSIGNEE_COLUMNS = 'assignee:id,name,email,avatar_path';
+
     public function column(): BelongsTo
     {
         return $this->belongsTo(BoardColumn::class, 'board_column_id');
+    }
+
+    /**
+     * Responsável pela tarefa (opcional).
+     */
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assignee_id');
     }
 }
